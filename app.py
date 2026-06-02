@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import date
 from uuid import uuid4
 
@@ -63,7 +64,9 @@ DEMO_PLACES = [
         "tags": ["그늘 있음", "조용함", "잠깐 쉬기 좋음"],
         "description": "오후에 그늘이 넓게 져서 점심 먹고 쉬기 좋아요. 벤치 3개, 앉아서 커피 마시기 딱입니다.",
         "likes": 12,
+        "liked_by": [],
         "created_at": "2026-04-15",
+        "comments": [],
         "supplements": ["가을에 은행잎이 예뻐요. 사진 찍기도 좋습니다!"],
     },
     {
@@ -77,7 +80,9 @@ DEMO_PLACES = [
         "tags": ["산책하기 좋음", "나무 많음", "혼자 가기 좋음", "여유로움"],
         "description": "아침 일찍 걸으면 사람이 적고 새소리가 들려요. 버드나무 그늘이 시원합니다.",
         "likes": 24,
+        "liked_by": [],
         "created_at": "2026-03-20",
+        "comments": [],
         "supplements": [],
     },
     {
@@ -91,7 +96,9 @@ DEMO_PLACES = [
         "tags": ["비 피하기 좋음", "기다리기 좋음", "편안함"],
         "description": "비 올 때 잠깐 피하기 딱 좋아요. 실내라 겨울에도 따뜻하고, 의자도 있습니다.",
         "likes": 8,
+        "liked_by": [],
         "created_at": "2026-04-02",
+        "comments": [],
         "supplements": [],
     },
     {
@@ -105,7 +112,9 @@ DEMO_PLACES = [
         "tags": ["친구와 가기 좋음", "활기 있음"],
         "description": "약속 장소로 찾기 쉬워요. 누구나 아는 랜드마크! 주변에 벤치도 많습니다.",
         "likes": 31,
+        "liked_by": [],
         "created_at": "2026-02-10",
+        "comments": [],
         "supplements": [],
     },
     {
@@ -119,7 +128,9 @@ DEMO_PLACES = [
         "tags": ["산책하기 좋음", "전망 좋음", "사진 찍기 좋음"],
         "description": "가을 단풍이 정말 아름답고, 겨울엔 눈 쌓인 소나무가 멋집니다. 경사 완만해요.",
         "likes": 19,
+        "liked_by": [],
         "created_at": "2026-01-25",
+        "comments": [],
         "supplements": [],
     },
     {
@@ -133,7 +144,9 @@ DEMO_PLACES = [
         "tags": ["편안함"],
         "description": "깨끗하게 관리되는 공공화장실이에요. 정수기도 있어서 물 채우기 좋습니다.",
         "likes": 15,
+        "liked_by": [],
         "created_at": "2026-03-05",
+        "comments": [],
         "supplements": [],
     },
     {
@@ -147,7 +160,9 @@ DEMO_PLACES = [
         "tags": ["산책하기 좋음", "감성적임", "사진 찍기 좋음", "혼자 가기 좋음"],
         "description": "봄 벚꽃, 가을 단풍 모두 아름다운 클래식 산책길. 평일 오전이 한적해요.",
         "likes": 42,
+        "liked_by": [],
         "created_at": "2026-04-01",
+        "comments": [],
         "supplements": [],
     },
     {
@@ -161,7 +176,9 @@ DEMO_PLACES = [
         "tags": ["잠깐 쉬기 좋음", "활기 있음", "친구와 가기 좋음"],
         "description": "인사동 구경하다 잠깐 앉기 좋아요. 사람 구경도 재밌습니다.",
         "likes": 9,
+        "liked_by": [],
         "created_at": "2026-05-03",
+        "comments": [],
         "supplements": [],
     },
 ]
@@ -187,11 +204,21 @@ DEMO_COURSES = [
 
 def init_state() -> None:
     if "places" not in st.session_state:
-        st.session_state.places = [place.copy() for place in DEMO_PLACES]
+        st.session_state.places = deepcopy(DEMO_PLACES)
+    for place in st.session_state.places:
+        place.setdefault("liked_by", [])
+        place.setdefault("comments", [])
     if "selected_place_id" not in st.session_state:
         st.session_state.selected_place_id = None
     if "picked_location" not in st.session_state:
         st.session_state.picked_location = None
+    if "account_name" not in st.session_state:
+        st.session_state.account_name = "동네 주민"
+
+
+def current_account() -> str:
+    account_name = st.session_state.account_name.strip()
+    return account_name or "동네 주민"
 
 
 def label_options(source: dict[str, str] | dict[str, dict[str, str]]) -> dict[str, str]:
@@ -288,6 +315,8 @@ def render_place_card(place: dict) -> None:
     meta = PLACE_TYPES[place["type"]]
     time_text = ", ".join(TIME_LABELS[item] for item in place["time_slot"])
     season_text = ", ".join(SEASON_LABELS[item] for item in place["season"])
+    account_name = current_account()
+    already_liked = account_name in place["liked_by"]
 
     with st.container(border=True):
         st.subheader(f"{meta['emoji']} {place['name']}")
@@ -298,8 +327,12 @@ def render_place_card(place: dict) -> None:
 
         left, right = st.columns([1, 2])
         with left:
-            if st.button(f"❤️ 공감 {place['likes']}", key=f"like-{place['id']}"):
+            like_label = f"❤️ 공감 {place['likes']}"
+            if already_liked:
+                like_label = f"❤️ 공감 완료 {place['likes']}"
+            if st.button(like_label, key=f"like-{place['id']}", disabled=already_liked):
                 place["likes"] += 1
+                place["liked_by"].append(account_name)
                 st.rerun()
         with right:
             st.caption(f"등록일 {place['created_at']}")
@@ -308,6 +341,39 @@ def render_place_card(place: dict) -> None:
             st.markdown("**주민이 덧붙인 정보**")
             for supplement in place["supplements"]:
                 st.info(supplement)
+
+        st.divider()
+        st.markdown(f"**댓글 {len(place['comments'])}개**")
+        if place["comments"]:
+            for comment in reversed(place["comments"]):
+                st.caption(f"{comment['author']} · {comment['created_at']}")
+                st.write(comment["content"])
+        else:
+            st.caption("아직 댓글이 없습니다.")
+
+        with st.form(f"comment-form-{place['id']}", clear_on_submit=True):
+            comment = st.text_area(
+                "댓글 작성",
+                placeholder="이 장소에 대한 경험이나 팁을 남겨주세요.",
+                height=80,
+                key=f"comment-text-{place['id']}",
+            )
+            submitted = st.form_submit_button("댓글 등록")
+
+        if submitted:
+            if not comment.strip():
+                st.error("댓글 내용을 입력해 주세요.")
+                return
+            place["comments"].append(
+                {
+                    "id": str(uuid4()),
+                    "author": account_name,
+                    "content": comment.strip(),
+                    "created_at": date.today().isoformat(),
+                }
+            )
+            st.success("댓글이 등록되었습니다.")
+            st.rerun()
 
 
 def render_courses(places: list[dict]) -> None:
@@ -369,7 +435,9 @@ def render_add_place_form() -> None:
                 "tags": selected_tags,
                 "description": description.strip(),
                 "likes": 0,
+                "liked_by": [],
                 "created_at": date.today().isoformat(),
+                "comments": [],
                 "supplements": [],
             }
         )
@@ -385,6 +453,11 @@ def main() -> None:
     st.caption("지도에는 없지만, 주민은 알고 있는 장소들")
 
     with st.sidebar:
+        st.header("내 계정")
+        st.text_input("계정 이름", key="account_name")
+        st.caption(f"{current_account()} 계정으로 공감과 댓글을 남깁니다.")
+
+        st.divider()
         st.header("필터")
         type_labels = label_options(PLACE_TYPES)
         time_labels = label_options(TIME_LABELS)
