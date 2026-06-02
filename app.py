@@ -17,12 +17,12 @@ st.set_page_config(
 
 
 PLACE_TYPES = {
-    "rest": {"label": "쉬기 좋은 곳", "emoji": "🪑", "color": "#22c55e"},
-    "walk": {"label": "걷기 좋은 길", "emoji": "🚶", "color": "#3b82f6"},
-    "wait": {"label": "기다리기 좋은 곳", "emoji": "⏳", "color": "#f59e0b"},
-    "meet": {"label": "만남 장소", "emoji": "🤝", "color": "#ec4899"},
-    "season": {"label": "계절별 추천", "emoji": "🌸", "color": "#f97316"},
-    "life": {"label": "생활 편의", "emoji": "🏪", "color": "#8b5cf6"},
+    "rest": {"label": "쉬기 좋은 곳", "emoji": "🪑", "icon": "R", "color": "#16a34a"},
+    "walk": {"label": "걷기 좋은 길", "emoji": "🚶", "icon": "W", "color": "#2563eb"},
+    "wait": {"label": "기다리기 좋은 곳", "emoji": "⏳", "icon": "T", "color": "#d97706"},
+    "meet": {"label": "만남 장소", "emoji": "🤝", "icon": "M", "color": "#db2777"},
+    "season": {"label": "계절별 추천", "emoji": "🌸", "icon": "S", "color": "#ea580c"},
+    "life": {"label": "생활 편의", "emoji": "🏪", "icon": "L", "color": "#7c3aed"},
 }
 
 TIME_LABELS = {
@@ -233,18 +233,108 @@ def marker_html(place_type: str) -> str:
     meta = PLACE_TYPES[place_type]
     return f"""
     <div style="
-        width: 36px;
-        height: 36px;
-        border-radius: 999px;
-        background: {meta["color"]};
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 3px solid white;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
-        font-size: 18px;
-    ">{meta["emoji"]}</div>
+        position: relative;
+        width: 38px;
+        height: 48px;
+        transform: translate(-19px, -44px);
+        filter: drop-shadow(0 12px 16px rgba(15, 23, 42, 0.28));
+    ">
+        <div style="
+            position: absolute;
+            top: 1px;
+            left: 3px;
+            width: 32px;
+            height: 32px;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            border-radius: 50% 50% 50% 0;
+            box-sizing: border-box;
+            background: linear-gradient(145deg, {meta["color"]} 0%, #111827 140%);
+            transform: rotate(-45deg);
+        "></div>
+        <div style="
+            position: absolute;
+            top: 6px;
+            left: 7px;
+            width: 24px;
+            height: 24px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.94);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: {meta["color"]};
+            font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0;
+            box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+        ">{meta["icon"]}</div>
+        <div style="
+            position: absolute;
+            left: 11px;
+            bottom: 2px;
+            width: 14px;
+            height: 5px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.18);
+            filter: blur(1px);
+        "></div>
+    </div>
+    """
+
+
+def picked_marker_html() -> str:
+    return """
+    <div style="
+        position: relative;
+        width: 42px;
+        height: 52px;
+        transform: translate(-21px, -48px);
+        filter: drop-shadow(0 14px 18px rgba(15, 23, 42, 0.30));
+    ">
+        <div style="
+            position: absolute;
+            top: 1px;
+            left: 3px;
+            width: 36px;
+            height: 36px;
+            border: 2px solid rgba(255, 255, 255, 0.92);
+            border-radius: 50% 50% 50% 0;
+            box-sizing: border-box;
+            background: linear-gradient(145deg, #ef4444 0%, #7f1d1d 135%);
+            transform: rotate(-45deg);
+        "></div>
+        <div style="
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            border: 2px solid rgba(255, 255, 255, 0.95);
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.2);
+        "></div>
+        <div style="
+            position: absolute;
+            top: 17px;
+            left: 17px;
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #ffffff;
+        "></div>
+        <div style="
+            position: absolute;
+            left: 13px;
+            bottom: 2px;
+            width: 16px;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.18);
+            filter: blur(1px);
+        "></div>
+    </div>
     """
 
 
@@ -278,7 +368,7 @@ def make_map(places: list[dict], picked_location: dict | None) -> folium.Map:
         folium.Marker(
             location=[picked_location["lat"], picked_location["lng"]],
             tooltip="새 장소 위치",
-            icon=folium.Icon(color="red", icon="map-pin", prefix="fa"),
+            icon=folium.DivIcon(html=picked_marker_html()),
         ).add_to(dongne_map)
 
     return dongne_map
