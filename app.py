@@ -18,7 +18,7 @@ st.set_page_config(
 
 
 DISTRICTS = ["종로구", "중구"]
-FOLDER_OPTIONS = ["전체 폴더", "종로구 폴더", "중구 폴더"]
+FOLDER_OPTIONS = ["전체", "종로구", "중구"]
 PLACE_TYPES = [
     "쉬기 좋은 곳",
     "걷기 좋은 길",
@@ -47,26 +47,209 @@ TAGS = [
 ]
 
 MAP_VIEWS = {
-    "전체 폴더": {"center": [37.5708, 126.9911], "zoom": 14},
-    "종로구 폴더": {"center": [37.5759, 126.9860], "zoom": 14},
-    "중구 폴더": {"center": [37.5629, 126.9950], "zoom": 14},
+    "전체": {"center": [37.5708, 126.9911], "zoom": 14},
+    "종로구": {"center": [37.5758, 126.9862], "zoom": 14},
+    "중구": {"center": [37.5628, 126.9944], "zoom": 14},
 }
 
 TYPE_STYLES = {
-    "쉬기 좋은 곳": {"color": "green", "icon": "tree"},
-    "걷기 좋은 길": {"color": "blue", "icon": "road"},
-    "기다리기 좋은 곳": {"color": "orange", "icon": "clock"},
-    "만남 장소": {"color": "purple", "icon": "star"},
-    "계절별 추천 장소": {"color": "pink", "icon": "heart"},
-    "생활 편의 장소": {"color": "cadetblue", "icon": "info"},
-    "역사·문화 산책길": {"color": "darkred", "icon": "landmark"},
-    "비 오는 날 피하기 좋은 곳": {"color": "darkblue", "icon": "cloud-rain"},
-    "밤에도 걷기 괜찮은 길": {"color": "darkpurple", "icon": "moon"},
+    "쉬기 좋은 곳": {"color": "green", "icon": "tree", "tone": "#eaf7ed"},
+    "걷기 좋은 길": {"color": "blue", "icon": "road", "tone": "#eaf2ff"},
+    "기다리기 좋은 곳": {"color": "orange", "icon": "clock", "tone": "#fff4df"},
+    "만남 장소": {"color": "purple", "icon": "star", "tone": "#f2ebff"},
+    "계절별 추천 장소": {"color": "pink", "icon": "heart", "tone": "#fff0f5"},
+    "생활 편의 장소": {"color": "cadetblue", "icon": "info", "tone": "#e7f5f5"},
+    "역사·문화 산책길": {"color": "darkred", "icon": "landmark", "tone": "#fff0e9"},
+    "비 오는 날 피하기 좋은 곳": {"color": "darkblue", "icon": "cloud-rain", "tone": "#eaf3f8"},
+    "밤에도 걷기 괜찮은 길": {"color": "darkpurple", "icon": "moon", "tone": "#f0efff"},
 }
 
 
+def inject_style() -> None:
+    st.markdown(
+        """
+        <style>
+        :root {
+            --ink: #202124;
+            --muted: #686f76;
+            --line: #dde3e8;
+            --paper: #fbfcf8;
+            --soft-green: #eef7ee;
+            --soft-blue: #edf4fb;
+            --accent: #2f7d63;
+        }
+
+        .stApp {
+            background:
+                linear-gradient(180deg, #f8fbf6 0%, #f7f8f4 38%, #f4f7f8 100%);
+            color: var(--ink);
+        }
+
+        section[data-testid="stSidebar"] {
+            background: #f6f8f3;
+            border-right: 1px solid var(--line);
+        }
+
+        .block-container {
+            padding-top: 2.1rem;
+            padding-bottom: 3rem;
+            max-width: 1320px;
+        }
+
+        h1, h2, h3 {
+            letter-spacing: 0;
+        }
+
+        div[data-testid="stMetric"] {
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 14px 16px;
+        }
+
+        .hero {
+            border: 1px solid #d8e4dc;
+            background:
+                linear-gradient(120deg, rgba(239, 248, 235, 0.98), rgba(238, 245, 250, 0.98)),
+                radial-gradient(circle at 92% 14%, rgba(47, 125, 99, 0.10), transparent 30%);
+            border-radius: 8px;
+            padding: 28px 30px;
+            margin-bottom: 18px;
+        }
+
+        .hero-kicker {
+            color: #2f7d63;
+            font-weight: 700;
+            font-size: 0.92rem;
+            margin-bottom: 8px;
+        }
+
+        .hero-title {
+            color: #202124;
+            font-size: 2.45rem;
+            font-weight: 800;
+            line-height: 1.14;
+            margin: 0 0 8px 0;
+        }
+
+        .hero-copy {
+            color: #4c555d;
+            font-size: 1.04rem;
+            line-height: 1.68;
+            max-width: 820px;
+            margin: 0;
+        }
+
+        .folder-card {
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.82);
+            border-radius: 8px;
+            padding: 16px 17px;
+            min-height: 138px;
+        }
+
+        .folder-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            margin: 0 0 8px 0;
+        }
+
+        .folder-meta {
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .folder-number {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: #2f7d63;
+            margin: 8px 0 2px 0;
+        }
+
+        .place-card {
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.86);
+            border-radius: 8px;
+            padding: 15px 16px 13px 16px;
+            margin-bottom: 10px;
+        }
+
+        .place-card:hover {
+            border-color: #b7cbc0;
+            background: #ffffff;
+        }
+
+        .place-topline {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .place-title {
+            font-weight: 800;
+            font-size: 1.02rem;
+            margin: 0;
+        }
+
+        .place-district {
+            color: #2f7d63;
+            font-size: 0.82rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .place-meta {
+            color: var(--muted);
+            font-size: 0.86rem;
+            margin: 7px 0 9px 0;
+            line-height: 1.45;
+        }
+
+        .place-desc {
+            color: #30363b;
+            font-size: 0.95rem;
+            line-height: 1.55;
+            margin: 0 0 10px 0;
+        }
+
+        .tag {
+            display: inline-block;
+            border: 1px solid #d7e3dc;
+            background: #f6faf6;
+            border-radius: 999px;
+            padding: 3px 8px;
+            margin: 0 4px 5px 0;
+            color: #37584d;
+            font-size: 0.78rem;
+        }
+
+        .type-chip {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 4px 9px;
+            font-weight: 700;
+            font-size: 0.78rem;
+            color: #25302c;
+            margin-bottom: 8px;
+        }
+
+        .section-note {
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.55;
+            margin-top: -6px;
+            margin-bottom: 14px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def base_place_folders() -> dict[str, list[dict]]:
-    """구별 장소 폴더. 나중에 CSV/DB로 옮길 때도 district 단위로 분리하기 쉽습니다."""
     return {
         "종로구": [
             {
@@ -264,7 +447,7 @@ def init_session_state() -> None:
         st.session_state.place_folders = base_place_folders()
 
     defaults = {
-        "selected_folder": "종로구 폴더",
+        "selected_folder": "종로구",
         "filter_types": [],
         "filter_time": "전체",
         "filter_season": "전체",
@@ -274,11 +457,24 @@ def init_session_state() -> None:
         st.session_state.setdefault(key, value)
 
 
-def reset_filters() -> None:
-    st.session_state.filter_types = []
-    st.session_state.filter_time = "전체"
-    st.session_state.filter_season = "전체"
-    st.session_state.filter_tags = []
+def all_places() -> list[dict]:
+    return [place for places in st.session_state.place_folders.values() for place in places]
+
+
+def folder_places(folder_name: str) -> list[dict]:
+    if folder_name == "전체":
+        return all_places()
+    return st.session_state.place_folders[folder_name]
+
+
+def folder_dataframe(folder_name: str) -> pd.DataFrame:
+    return pd.DataFrame(folder_places(folder_name))
+
+
+def as_text(value: list[str] | str) -> str:
+    if isinstance(value, list):
+        return ", ".join(value)
+    return str(value)
 
 
 def apply_preset(types: list[str] | None = None, time: str = "전체", season: str = "전체", tags: list[str] | None = None) -> None:
@@ -288,32 +484,8 @@ def apply_preset(types: list[str] | None = None, time: str = "전체", season: s
     st.session_state.filter_tags = tags or []
 
 
-def folder_to_district(folder_name: str) -> str | None:
-    if folder_name == "종로구 폴더":
-        return "종로구"
-    if folder_name == "중구 폴더":
-        return "중구"
-    return None
-
-
-def all_places() -> list[dict]:
-    return [
-        place
-        for places in st.session_state.place_folders.values()
-        for place in places
-    ]
-
-
-def folder_dataframe(folder_name: str) -> pd.DataFrame:
-    district = folder_to_district(folder_name)
-    places = st.session_state.place_folders[district] if district else all_places()
-    return pd.DataFrame(places)
-
-
-def as_text(value: list[str] | str) -> str:
-    if isinstance(value, list):
-        return ", ".join(value)
-    return str(value)
+def reset_filters() -> None:
+    apply_preset()
 
 
 def filter_places(df: pd.DataFrame) -> pd.DataFrame:
@@ -343,17 +515,21 @@ def filter_places(df: pd.DataFrame) -> pd.DataFrame:
     return filtered
 
 
+def type_tone(place_type: str) -> str:
+    return TYPE_STYLES.get(place_type, {}).get("tone", "#f4f6f7")
+
+
 def popup_html(row: pd.Series) -> str:
     return f"""
-    <div style="width:260px">
-        <h4 style="margin:0 0 6px 0;">{row.place_name}</h4>
-        <b>장소 폴더</b>: {row.district}<br>
-        <b>유형</b>: {row.place_type}<br>
-        <b>추천 시간대</b>: {as_text(row.time_period)}<br>
-        <b>추천 계절</b>: {as_text(row.season)}<br>
-        <b>태그</b>: {as_text(row.tags)}<br>
-        <b>공감</b>: {row.likes}<br>
-        <p style="margin:8px 0 0 0;">{row.description}</p>
+    <div style="width:260px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+        <div style="font-size:12px; color:#2f7d63; font-weight:700;">{row.district} 폴더</div>
+        <h4 style="margin:3px 0 8px 0;">{row.place_name}</h4>
+        <div style="margin-bottom:6px;"><b>유형</b>: {row.place_type}</div>
+        <div><b>추천 시간대</b>: {as_text(row.time_period)}</div>
+        <div><b>추천 계절</b>: {as_text(row.season)}</div>
+        <div><b>태그</b>: {as_text(row.tags)}</div>
+        <div><b>공감</b>: {row.likes}</div>
+        <p style="margin:9px 0 0 0; line-height:1.45;">{row.description}</p>
     </div>
     """
 
@@ -372,17 +548,28 @@ def build_map(filtered_df: pd.DataFrame, folder_name: str) -> folium.Map:
         ).add_to(m)
 
     if not filtered_df.empty:
-        m.fit_bounds(filtered_df[["latitude", "longitude"]].values.tolist(), padding=(28, 28))
+        m.fit_bounds(filtered_df[["latitude", "longitude"]].values.tolist(), padding=(30, 30))
 
     return m
 
 
-def render_sidebar() -> None:
-    st.sidebar.header("장소 폴더")
-    st.sidebar.radio("구별로 먼저 선택", FOLDER_OPTIONS, key="selected_folder")
-    st.sidebar.caption("장소가 섞여 보이지 않도록 선택한 폴더 안의 장소만 지도에 표시합니다.")
+def render_hero() -> None:
+    st.markdown(
+        """
+        <div class="hero">
+            <div class="hero-kicker">PGIS 기반 주민 참여형 생활경험 지도</div>
+            <div class="hero-title">동네 사용설명서</div>
+            <p class="hero-copy">
+                지도에는 없지만 주민은 알고 있는 장소들. 종로구와 중구의 골목, 광장,
+                산책길, 기다림의 장소를 시간대와 계절, 상황 중심으로 기록합니다.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.sidebar.divider()
+
+def render_sidebar() -> None:
     st.sidebar.header("빠른 추천")
     st.sidebar.button(
         "여름 그늘길 보기",
@@ -427,18 +614,30 @@ def render_sidebar() -> None:
         st.rerun()
 
 
-def render_folder_overview() -> None:
-    cols = st.columns(2)
-    for index, district in enumerate(DISTRICTS):
-        places = st.session_state.place_folders[district]
+def render_folder_cards() -> None:
+    cols = st.columns(3)
+    folder_specs = [
+        ("전체", "두 구를 한 번에 비교", all_places()),
+        ("종로구", "골목과 산책길 중심", st.session_state.place_folders["종로구"]),
+        ("중구", "도심 이동과 기다림 중심", st.session_state.place_folders["중구"]),
+    ]
+
+    for col, (name, desc, places) in zip(cols, folder_specs):
         type_counter = Counter(place["place_type"] for place in places)
         tag_counter = Counter(tag for place in places for tag in place["tags"])
-        with cols[index]:
-            with st.container(border=True):
-                st.subheader(f"{district} 폴더")
-                st.metric("등록된 장소", f"{len(places)}곳")
-                st.caption(f"대표 유형: {type_counter.most_common(1)[0][0]}")
-                st.caption(f"대표 태그: {tag_counter.most_common(1)[0][0]}")
+        with col:
+            st.markdown(
+                f"""
+                <div class="folder-card">
+                    <div class="folder-title">{name} 폴더</div>
+                    <p class="folder-meta">{desc}</p>
+                    <div class="folder-number">{len(places)}곳</div>
+                    <p class="folder-meta">주요 유형: {type_counter.most_common(1)[0][0]}</p>
+                    <p class="folder-meta">자주 쓰인 태그: {tag_counter.most_common(1)[0][0]}</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
 
 def render_summary(filtered_df: pd.DataFrame) -> None:
@@ -447,14 +646,10 @@ def render_summary(filtered_df: pd.DataFrame) -> None:
     avg_likes = filtered_df["likes"].mean() if not filtered_df.empty else 0
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("현재 폴더 표시 장소", f"{len(filtered_df)}곳")
-    col2.metric("가장 많은 유형", type_counter.most_common(1)[0][0] if type_counter else "-")
-    col3.metric("가장 많은 태그", tag_counter.most_common(1)[0][0] if tag_counter else "-")
-    col4.metric("평균 공감 수", f"{avg_likes:.1f}")
-
-    if not filtered_df.empty:
-        counts = filtered_df["district"].value_counts().reindex(DISTRICTS, fill_value=0)
-        st.caption(f"종로구 {counts['종로구']}곳 · 중구 {counts['중구']}곳")
+    col1.metric("표시 장소", f"{len(filtered_df)}곳")
+    col2.metric("많은 유형", type_counter.most_common(1)[0][0] if type_counter else "-")
+    col3.metric("많은 태그", tag_counter.most_common(1)[0][0] if tag_counter else "-")
+    col4.metric("평균 공감", f"{avg_likes:.1f}")
 
 
 def render_place_cards(filtered_df: pd.DataFrame) -> None:
@@ -462,42 +657,53 @@ def render_place_cards(filtered_df: pd.DataFrame) -> None:
         st.info("현재 폴더와 필터에 맞는 장소가 없습니다.")
         return
 
-    for _, row in filtered_df.sort_values(["district", "place_type", "likes"], ascending=[True, True, False]).iterrows():
-        with st.container(border=True):
-            st.markdown(f"**[{row.district}] {row.place_name}**")
-            st.caption(f"{row.place_type} · {as_text(row.time_period)} · {as_text(row.season)} · 공감 {row.likes}")
-            st.write(row.description)
-            st.write(" ".join(f"`#{tag}`" for tag in row.tags))
+    sorted_df = filtered_df.sort_values(["likes", "place_name"], ascending=[False, True])
+    for _, row in sorted_df.iterrows():
+        tags_html = "".join(f'<span class="tag">#{tag}</span>' for tag in row.tags)
+        st.markdown(
+            f"""
+            <div class="place-card">
+                <div class="place-topline">
+                    <p class="place-title">{row.place_name}</p>
+                    <span class="place-district">{row.district}</span>
+                </div>
+                <span class="type-chip" style="background:{type_tone(row.place_type)};">{row.place_type}</span>
+                <p class="place-meta">{as_text(row.time_period)} · {as_text(row.season)} · 공감 {row.likes}</p>
+                <p class="place-desc">{row.description}</p>
+                <div>{tags_html}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def render_courses(folder_name: str) -> None:
-    district = folder_to_district(folder_name)
-    visible_courses = [course for course in COURSES if district is None or course["district"] == district]
+    visible_courses = [course for course in COURSES if folder_name == "전체" or course["district"] == folder_name]
     lookup = {place["id"]: place["place_name"] for place in all_places()}
 
     cols = st.columns(2)
     for index, course in enumerate(visible_courses):
         with cols[index % 2]:
             with st.container(border=True):
-                names = [lookup[place_id] for place_id in course["place_ids"] if place_id in lookup]
-                st.subheader(course["name"])
+                route = " -> ".join(lookup[place_id] for place_id in course["place_ids"] if place_id in lookup)
+                st.markdown(f"**{course['name']}**")
                 st.caption(f"{course['district']} 폴더")
                 st.write(course["description"])
-                st.caption(" -> ".join(names))
+                st.caption(route)
 
 
 def render_place_form() -> None:
-    current_district = folder_to_district(st.session_state.selected_folder) or "종로구"
+    default_district = "종로구" if st.session_state.selected_folder == "전체" else st.session_state.selected_folder
 
     st.subheader("장소 등록")
-    st.caption(
-        "등록한 장소는 선택한 구의 장소 폴더에 임시 저장됩니다. "
-        "일반 리뷰보다 이 장소를 어떤 상황에서 어떻게 사용하는지 적어주세요."
+    st.markdown(
+        '<p class="section-note">등록한 장소는 선택한 구의 장소 폴더에 임시 저장됩니다. 일반 리뷰보다 이 장소를 어떤 상황에서 어떻게 사용하는지 적어주세요.</p>',
+        unsafe_allow_html=True,
     )
 
     with st.form("place_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
-        district = col1.selectbox("저장할 장소 폴더", DISTRICTS, index=DISTRICTS.index(current_district))
+        district = col1.selectbox("저장할 장소 폴더", DISTRICTS, index=DISTRICTS.index(default_district))
         place_name = col2.text_input("장소 이름", placeholder="예: 정동길 은행나무 그늘")
 
         col3, col4 = st.columns(2)
@@ -515,7 +721,7 @@ def render_place_form() -> None:
             placeholder="예: 을지로에서 약속 전 10분 정도 기다리기 좋음",
         )
 
-        submitted = st.form_submit_button("해당 구 폴더에 임시 등록")
+        submitted = st.form_submit_button("장소 폴더에 임시 등록")
 
     if submitted:
         if not place_name or not description or not time_period or not season or not tags:
@@ -554,33 +760,39 @@ def render_principles() -> None:
 
 def main() -> None:
     init_session_state()
+    inject_style()
     render_sidebar()
+    render_hero()
+    render_folder_cards()
 
-    st.title("동네 사용설명서")
-    st.subheader("지도에는 없지만, 주민은 알고 있는 장소들")
-    st.write("종로구와 중구의 생활경험 장소를 구별 폴더에 나누어 기록하는 PGIS 기반 도심 생활지도입니다.")
-
-    render_folder_overview()
+    st.divider()
+    st.radio(
+        "장소 폴더 선택",
+        FOLDER_OPTIONS,
+        key="selected_folder",
+        horizontal=True,
+        help="선택한 폴더 안의 장소만 지도와 목록에 표시됩니다.",
+    )
 
     folder_name = st.session_state.selected_folder
     folder_df = folder_dataframe(folder_name)
     filtered_df = filter_places(folder_df)
 
-    st.divider()
-    st.header(folder_name)
-    st.caption("선택한 장소 폴더 안에서만 지도와 목록이 갱신됩니다.")
+    st.markdown(f"### {folder_name} 폴더")
+    st.markdown(
+        '<p class="section-note">생활 경험이 기록된 장소를 지도와 카드 목록으로 함께 확인합니다.</p>',
+        unsafe_allow_html=True,
+    )
     render_summary(filtered_df)
 
-    map_col, list_col = st.columns([1.35, 1], gap="large")
+    map_col, list_col = st.columns([1.45, 1], gap="large")
     with map_col:
-        st.subheader("폴더 지도")
-        st_folium(build_map(filtered_df, folder_name), width=None, height=560)
+        st_folium(build_map(filtered_df, folder_name), width=None, height=575)
 
     with list_col:
-        st.subheader("폴더 안 장소")
         render_place_cards(filtered_df)
 
-    with st.expander("표로 보기", expanded=False):
+    with st.expander("표로 자세히 보기", expanded=False):
         table_df = filtered_df.copy()
         if not table_df.empty:
             table_df["time_period"] = table_df["time_period"].apply(as_text)
