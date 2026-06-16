@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from copy import deepcopy
-from datetime import date
-from math import cos, radians, sqrt
-import os
+from collections import Counter
 from uuid import uuid4
 
 import folium
-import requests
+import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
 
@@ -20,896 +17,601 @@ st.set_page_config(
 )
 
 
-PLACE_TYPES = {
-    "rest": {"label": "쉬기 좋은 곳", "emoji": "🪑", "color": "#22c55e"},
-    "walk": {"label": "걷기 좋은 길", "emoji": "🚶", "color": "#3b82f6"},
-    "wait": {"label": "기다리기 좋은 곳", "emoji": "⏳", "color": "#f59e0b"},
-    "meet": {"label": "만남 장소", "emoji": "🤝", "color": "#ec4899"},
-    "season": {"label": "계절별 추천", "emoji": "🌸", "color": "#f97316"},
-    "life": {"label": "생활 편의", "emoji": "🏪", "color": "#8b5cf6"},
-}
-
-TIME_LABELS = {
-    "morning": "아침",
-    "lunch": "점심",
-    "evening": "저녁",
-    "night": "밤",
-}
-
-SEASON_LABELS = {
-    "spring": "봄",
-    "summer": "여름",
-    "fall": "가을",
-    "winter": "겨울",
-    "all": "사계절",
-}
-
-TAG_GROUPS = {
-    "분위기": ["조용함", "활기 있음", "여유로움", "편안함", "감성적임"],
-    "환경": ["그늘 있음", "햇빛 좋음", "바람 잘 통함", "전망 좋음", "나무 많음"],
-    "이용": ["혼자 가기 좋음", "친구와 가기 좋음", "가족과 가기 좋음", "기다리기 좋음"],
-    "활동": ["산책하기 좋음", "공부하기 좋음", "사진 찍기 좋음", "잠깐 쉬기 좋음"],
-    "날씨": ["봄에 좋음", "여름에 좋음", "비 피하기 좋음", "겨울 햇볕 좋음"],
-}
-
-ALL_TAGS = [tag for tags in TAG_GROUPS.values() for tag in tags]
-
-SEOUL_BOUNDS = {
-    "min_lat": 37.413,
-    "max_lat": 37.715,
-    "min_lng": 126.734,
-    "max_lng": 127.270,
-}
-
-SEOUL_VIEWBOX = "126.734,37.715,127.270,37.413"
-
-SEOUL_ADMIN_DONGS = {
-    "강남구": ["신사동", "논현1동", "논현2동", "압구정동", "청담동", "삼성1동", "삼성2동", "대치1동", "대치2동", "대치4동", "역삼1동", "역삼2동", "도곡1동", "도곡2동", "개포1동", "개포2동", "개포3동", "개포4동", "세곡동", "일원본동", "일원1동", "수서동"],
-    "강동구": ["강일동", "상일1동", "상일2동", "명일1동", "명일2동", "고덕1동", "고덕2동", "암사1동", "암사2동", "암사3동", "천호1동", "천호2동", "천호3동", "성내1동", "성내2동", "성내3동", "길동", "둔촌1동", "둔촌2동"],
-    "강북구": ["삼양동", "미아동", "송중동", "송천동", "삼각산동", "번1동", "번2동", "번3동", "수유1동", "수유2동", "수유3동", "우이동", "인수동"],
-    "강서구": ["염창동", "등촌1동", "등촌2동", "등촌3동", "화곡본동", "화곡1동", "화곡2동", "화곡3동", "화곡4동", "화곡6동", "화곡8동", "우장산동", "가양1동", "가양2동", "가양3동", "발산1동", "공항동", "방화1동", "방화2동", "방화3동"],
-    "관악구": ["보라매동", "은천동", "성현동", "중앙동", "청림동", "행운동", "청룡동", "낙성대동", "인헌동", "남현동", "신림동", "신사동", "조원동", "미성동", "난곡동", "난향동", "서원동", "신원동", "서림동", "삼성동", "대학동"],
-    "광진구": ["중곡1동", "중곡2동", "중곡3동", "중곡4동", "능동", "구의1동", "구의2동", "구의3동", "광장동", "자양1동", "자양2동", "자양3동", "자양4동", "화양동", "군자동"],
-    "구로구": ["신도림동", "구로1동", "구로2동", "구로3동", "구로4동", "구로5동", "가리봉동", "고척1동", "고척2동", "개봉1동", "개봉2동", "개봉3동", "오류1동", "오류2동", "수궁동", "항동"],
-    "금천구": ["가산동", "독산1동", "독산2동", "독산3동", "독산4동", "시흥1동", "시흥2동", "시흥3동", "시흥4동", "시흥5동"],
-    "노원구": ["월계1동", "월계2동", "월계3동", "공릉1동", "공릉2동", "하계1동", "하계2동", "중계본동", "중계1동", "중계2·3동", "중계4동", "상계1동", "상계2동", "상계3·4동", "상계5동", "상계6·7동", "상계8동", "상계9동", "상계10동"],
-    "도봉구": ["쌍문1동", "쌍문2동", "쌍문3동", "쌍문4동", "방학1동", "방학2동", "방학3동", "창1동", "창2동", "창3동", "창4동", "창5동", "도봉1동", "도봉2동"],
-    "동대문구": ["용신동", "제기동", "전농1동", "전농2동", "답십리1동", "답십리2동", "장안1동", "장안2동", "청량리동", "회기동", "휘경1동", "휘경2동", "이문1동", "이문2동"],
-    "동작구": ["노량진1동", "노량진2동", "상도1동", "상도2동", "상도3동", "상도4동", "흑석동", "사당1동", "사당2동", "사당3동", "사당4동", "사당5동", "대방동", "신대방1동", "신대방2동"],
-    "마포구": ["공덕동", "아현동", "도화동", "용강동", "대흥동", "염리동", "신수동", "서강동", "서교동", "합정동", "망원1동", "망원2동", "연남동", "성산1동", "성산2동", "상암동"],
-    "서대문구": ["충현동", "천연동", "북아현동", "신촌동", "연희동", "홍제1동", "홍제2동", "홍제3동", "홍은1동", "홍은2동", "남가좌1동", "남가좌2동", "북가좌1동", "북가좌2동"],
-    "서초구": ["서초1동", "서초2동", "서초3동", "서초4동", "잠원동", "반포본동", "반포1동", "반포2동", "반포3동", "반포4동", "방배본동", "방배1동", "방배2동", "방배3동", "방배4동", "양재1동", "양재2동", "내곡동"],
-    "성동구": ["왕십리도선동", "왕십리2동", "마장동", "사근동", "행당1동", "행당2동", "응봉동", "금호1가동", "금호2·3가동", "금호4가동", "옥수동", "성수1가1동", "성수1가2동", "성수2가1동", "성수2가3동", "송정동", "용답동"],
-    "성북구": ["성북동", "삼선동", "동선동", "돈암1동", "돈암2동", "안암동", "보문동", "정릉1동", "정릉2동", "정릉3동", "정릉4동", "길음1동", "길음2동", "종암동", "월곡1동", "월곡2동", "장위1동", "장위2동", "장위3동", "석관동"],
-    "송파구": ["풍납1동", "풍납2동", "거여1동", "거여2동", "마천1동", "마천2동", "방이1동", "방이2동", "오륜동", "오금동", "송파1동", "송파2동", "석촌동", "삼전동", "가락본동", "가락1동", "가락2동", "문정1동", "문정2동", "장지동", "위례동", "잠실본동", "잠실2동", "잠실3동", "잠실4동", "잠실6동", "잠실7동"],
-    "양천구": ["목1동", "목2동", "목3동", "목4동", "목5동", "신월1동", "신월2동", "신월3동", "신월4동", "신월5동", "신월6동", "신월7동", "신정1동", "신정2동", "신정3동", "신정4동", "신정6동", "신정7동"],
-    "영등포구": ["영등포본동", "영등포동", "여의동", "당산1동", "당산2동", "도림동", "문래동", "양평1동", "양평2동", "신길1동", "신길3동", "신길4동", "신길5동", "신길6동", "신길7동", "대림1동", "대림2동", "대림3동"],
-    "용산구": ["후암동", "용산2가동", "남영동", "청파동", "원효로1동", "원효로2동", "효창동", "용문동", "한강로동", "이촌1동", "이촌2동", "이태원1동", "이태원2동", "한남동", "서빙고동", "보광동"],
-    "은평구": ["녹번동", "불광1동", "불광2동", "갈현1동", "갈현2동", "구산동", "대조동", "응암1동", "응암2동", "응암3동", "역촌동", "신사1동", "신사2동", "증산동", "수색동", "진관동"],
-    "종로구": ["청운효자동", "사직동", "삼청동", "부암동", "평창동", "무악동", "교남동", "가회동", "종로1·2·3·4가동", "종로5·6가동", "이화동", "혜화동", "창신1동", "창신2동", "창신3동", "숭인1동", "숭인2동"],
-    "중구": ["소공동", "회현동", "명동", "필동", "장충동", "광희동", "을지로동", "신당동", "다산동", "약수동", "청구동", "신당5동", "동화동", "황학동", "중림동"],
-    "중랑구": ["면목본동", "면목2동", "면목3·8동", "면목4동", "면목5동", "면목7동", "상봉1동", "상봉2동", "중화1동", "중화2동", "묵1동", "묵2동", "망우본동", "망우3동", "신내1동", "신내2동"],
-}
-
-SEOUL_DONG_CENTERS = {
-    ("종로구", "청운효자동"): (37.5842, 126.9708),
-    ("종로구", "사직동"): (37.5758, 126.9689),
-    ("종로구", "삼청동"): (37.5850, 126.9818),
-    ("종로구", "가회동"): (37.5828, 126.9867),
-    ("종로구", "종로1·2·3·4가동"): (37.5703, 126.9830),
-    ("종로구", "종로5·6가동"): (37.5707, 127.0030),
-    ("종로구", "혜화동"): (37.5861, 127.0005),
-    ("중구", "소공동"): (37.5638, 126.9796),
-    ("중구", "회현동"): (37.5574, 126.9791),
-    ("중구", "명동"): (37.5636, 126.9869),
-    ("중구", "필동"): (37.5604, 126.9958),
-    ("중구", "을지로동"): (37.5664, 126.9914),
-    ("중구", "광희동"): (37.5644, 127.0051),
-    ("중구", "신당동"): (37.5654, 127.0168),
-    ("용산구", "한강로동"): (37.5299, 126.9706),
-    ("용산구", "이태원1동"): (37.5345, 126.9946),
-    ("용산구", "한남동"): (37.5345, 127.0036),
-    ("성동구", "성수1가1동"): (37.5421, 127.0431),
-    ("성동구", "성수2가1동"): (37.5397, 127.0555),
-    ("성동구", "왕십리도선동"): (37.5676, 127.0255),
-    ("광진구", "화양동"): (37.5452, 127.0717),
-    ("광진구", "자양1동"): (37.5347, 127.0828),
-    ("광진구", "광장동"): (37.5469, 127.1034),
-    ("동대문구", "청량리동"): (37.5877, 127.0473),
-    ("동대문구", "회기동"): (37.5908, 127.0553),
-    ("중랑구", "면목본동"): (37.5893, 127.0875),
-    ("중랑구", "상봉1동"): (37.5979, 127.0930),
-    ("성북구", "성북동"): (37.5926, 126.9989),
-    ("성북구", "안암동"): (37.5860, 127.0217),
-    ("성북구", "정릉1동"): (37.6034, 127.0135),
-    ("강북구", "수유3동"): (37.6380, 127.0255),
-    ("강북구", "미아동"): (37.6270, 127.0261),
-    ("도봉구", "창1동"): (37.6477, 127.0449),
-    ("도봉구", "도봉2동"): (37.6692, 127.0470),
-    ("노원구", "상계6·7동"): (37.6542, 127.0606),
-    ("노원구", "공릉1동"): (37.6248, 127.0738),
-    ("은평구", "녹번동"): (37.6028, 126.9292),
-    ("은평구", "진관동"): (37.6375, 126.9198),
-    ("서대문구", "신촌동"): (37.5654, 126.9390),
-    ("서대문구", "연희동"): (37.5736, 126.9352),
-    ("마포구", "서교동"): (37.5552, 126.9237),
-    ("마포구", "연남동"): (37.5623, 126.9217),
-    ("마포구", "상암동"): (37.5784, 126.8927),
-    ("양천구", "목1동"): (37.5307, 126.8755),
-    ("양천구", "신정1동"): (37.5186, 126.8545),
-    ("강서구", "가양1동"): (37.5696, 126.8449),
-    ("강서구", "공항동"): (37.5585, 126.8107),
-    ("강서구", "화곡1동"): (37.5441, 126.8416),
-    ("구로구", "신도림동"): (37.5088, 126.8807),
-    ("구로구", "구로3동"): (37.4854, 126.8955),
-    ("금천구", "가산동"): (37.4768, 126.8838),
-    ("금천구", "시흥1동"): (37.4568, 126.8954),
-    ("영등포구", "여의동"): (37.5236, 126.9246),
-    ("영등포구", "문래동"): (37.5165, 126.8899),
-    ("동작구", "노량진1동"): (37.5125, 126.9419),
-    ("동작구", "흑석동"): (37.5053, 126.9626),
-    ("관악구", "낙성대동"): (37.4761, 126.9580),
-    ("관악구", "신림동"): (37.4874, 126.9298),
-    ("서초구", "서초2동"): (37.4921, 127.0246),
-    ("서초구", "반포4동"): (37.4995, 127.0005),
-    ("서초구", "양재1동"): (37.4837, 127.0365),
-    ("강남구", "신사동"): (37.5224, 127.0287),
-    ("강남구", "압구정동"): (37.5271, 127.0307),
-    ("강남구", "청담동"): (37.5251, 127.0493),
-    ("강남구", "삼성1동"): (37.5146, 127.0625),
-    ("강남구", "대치1동"): (37.4931, 127.0560),
-    ("강남구", "역삼1동"): (37.5007, 127.0365),
-    ("송파구", "잠실6동"): (37.5145, 127.1003),
-    ("송파구", "석촌동"): (37.5036, 127.1036),
-    ("송파구", "가락본동"): (37.4957, 127.1200),
-    ("송파구", "문정2동"): (37.4860, 127.1225),
-    ("강동구", "천호2동"): (37.5435, 127.1259),
-    ("강동구", "길동"): (37.5391, 127.1466),
-    ("강동구", "상일1동"): (37.5512, 127.1693),
-}
-
-
-DEMO_PLACES = [
-    {
-        "id": "d1",
-        "lat": 37.5665,
-        "lng": 126.9780,
-        "name": "시청 앞 느티나무 벤치",
-        "type": "rest",
-        "time_slot": ["lunch", "evening"],
-        "season": ["summer", "fall"],
-        "tags": ["그늘 있음", "조용함", "잠깐 쉬기 좋음"],
-        "description": "오후에 그늘이 넓게 져서 점심 먹고 쉬기 좋아요. 벤치 3개, 앉아서 커피 마시기 딱입니다.",
-        "likes": 12,
-        "liked_by": [],
-        "created_at": "2026-04-15",
-        "feeds": [],
-        "supplements": ["가을에 은행잎이 예뻐요. 사진 찍기도 좋습니다!"],
-    },
-    {
-        "id": "d2",
-        "lat": 37.5700,
-        "lng": 126.9745,
-        "name": "청계천 버들길",
-        "type": "walk",
-        "time_slot": ["morning", "evening"],
-        "season": ["spring", "summer"],
-        "tags": ["산책하기 좋음", "나무 많음", "혼자 가기 좋음", "여유로움"],
-        "description": "아침 일찍 걸으면 사람이 적고 새소리가 들려요. 버드나무 그늘이 시원합니다.",
-        "likes": 24,
-        "liked_by": [],
-        "created_at": "2026-03-20",
-        "feeds": [],
-        "supplements": [],
-    },
-    {
-        "id": "d3",
-        "lat": 37.5645,
-        "lng": 126.9810,
-        "name": "을지로 지하상가 입구",
-        "type": "wait",
-        "time_slot": ["lunch", "evening"],
-        "season": ["all"],
-        "tags": ["비 피하기 좋음", "기다리기 좋음", "편안함"],
-        "description": "비 올 때 잠깐 피하기 딱 좋아요. 실내라 겨울에도 따뜻하고, 의자도 있습니다.",
-        "likes": 8,
-        "liked_by": [],
-        "created_at": "2026-04-02",
-        "feeds": [],
-        "supplements": [],
-    },
-    {
-        "id": "d4",
-        "lat": 37.5723,
-        "lng": 126.9769,
-        "name": "광화문 광장 세종대왕상 앞",
-        "type": "meet",
-        "time_slot": ["lunch", "evening"],
-        "season": ["all"],
-        "tags": ["친구와 가기 좋음", "활기 있음"],
-        "description": "약속 장소로 찾기 쉬워요. 누구나 아는 랜드마크! 주변에 벤치도 많습니다.",
-        "likes": 31,
-        "liked_by": [],
-        "created_at": "2026-02-10",
-        "feeds": [],
-        "supplements": [],
-    },
-    {
-        "id": "d5",
-        "lat": 37.5590,
-        "lng": 126.9830,
-        "name": "남산 소나무길 입구",
-        "type": "season",
-        "time_slot": ["morning", "evening"],
-        "season": ["fall", "winter"],
-        "tags": ["산책하기 좋음", "전망 좋음", "사진 찍기 좋음"],
-        "description": "가을 단풍이 정말 아름답고, 겨울엔 눈 쌓인 소나무가 멋집니다. 경사 완만해요.",
-        "likes": 19,
-        "liked_by": [],
-        "created_at": "2026-01-25",
-        "feeds": [],
-        "supplements": [],
-    },
-    {
-        "id": "d6",
-        "lat": 37.5695,
-        "lng": 126.9825,
-        "name": "종각역 지하 공공화장실·정수기",
-        "type": "life",
-        "time_slot": ["morning", "lunch", "evening", "night"],
-        "season": ["all"],
-        "tags": ["편안함"],
-        "description": "깨끗하게 관리되는 공공화장실이에요. 정수기도 있어서 물 채우기 좋습니다.",
-        "likes": 15,
-        "liked_by": [],
-        "created_at": "2026-03-05",
-        "feeds": [],
-        "supplements": [],
-    },
-    {
-        "id": "d7",
-        "lat": 37.5658,
-        "lng": 126.9752,
-        "name": "덕수궁 돌담길",
-        "type": "walk",
-        "time_slot": ["morning", "lunch", "evening"],
-        "season": ["spring", "fall"],
-        "tags": ["산책하기 좋음", "감성적임", "사진 찍기 좋음", "혼자 가기 좋음"],
-        "description": "봄 벚꽃, 가을 단풍 모두 아름다운 클래식 산책길. 평일 오전이 한적해요.",
-        "likes": 42,
-        "liked_by": [],
-        "created_at": "2026-04-01",
-        "feeds": [],
-        "supplements": [],
-    },
-    {
-        "id": "d8",
-        "lat": 37.5712,
-        "lng": 126.9810,
-        "name": "인사동 쌈지길 앞 벤치",
-        "type": "rest",
-        "time_slot": ["lunch", "evening"],
-        "season": ["spring", "fall"],
-        "tags": ["잠깐 쉬기 좋음", "활기 있음", "친구와 가기 좋음"],
-        "description": "인사동 구경하다 잠깐 앉기 좋아요. 사람 구경도 재밌습니다.",
-        "likes": 9,
-        "liked_by": [],
-        "created_at": "2026-05-03",
-        "feeds": [],
-        "supplements": [],
-    },
+DISTRICTS = ["종로구", "중구"]
+FOLDER_OPTIONS = ["전체 폴더", "종로구 폴더", "중구 폴더"]
+PLACE_TYPES = [
+    "쉬기 좋은 곳",
+    "걷기 좋은 길",
+    "기다리기 좋은 곳",
+    "만남 장소",
+    "계절별 추천 장소",
+    "생활 편의 장소",
+    "역사·문화 산책길",
+    "비 오는 날 피하기 좋은 곳",
+    "밤에도 걷기 괜찮은 길",
+]
+TIME_PERIODS = ["아침", "점심", "저녁", "밤"]
+SEASONS = ["봄", "여름", "가을", "겨울", "사계절"]
+TAGS = [
+    "조용함",
+    "그늘 있음",
+    "햇빛 좋음",
+    "혼자 가기 좋음",
+    "친구와 가기 좋음",
+    "기다리기 좋음",
+    "산책하기 좋음",
+    "사진 찍기 좋음",
+    "비 피하기 좋음",
+    "찾기 쉬움",
+    "사람 덜 붐빔",
 ]
 
-DEMO_COURSES = [
-    {
-        "title": "🌙 혼자 걷기 좋은 저녁 산책",
-        "description": "청계천 버들길에서 시작해 덕수궁 돌담길까지, 조용하게 걷기 좋은 코스",
-        "place_ids": ["d2", "d7"],
-    },
-    {
-        "title": "☀️ 점심시간 힐링 코스",
-        "description": "시청 벤치에서 쉬고 광화문까지 걸으며 기분전환",
-        "place_ids": ["d1", "d4"],
-    },
-    {
-        "title": "🍂 가을 감성 산책",
-        "description": "덕수궁 돌담길 → 남산 소나무길로 이어지는 단풍 코스",
-        "place_ids": ["d7", "d5"],
-    },
-]
+MAP_VIEWS = {
+    "전체 폴더": {"center": [37.5708, 126.9911], "zoom": 14},
+    "종로구 폴더": {"center": [37.5759, 126.9860], "zoom": 14},
+    "중구 폴더": {"center": [37.5629, 126.9950], "zoom": 14},
+}
+
+TYPE_STYLES = {
+    "쉬기 좋은 곳": {"color": "green", "icon": "tree"},
+    "걷기 좋은 길": {"color": "blue", "icon": "road"},
+    "기다리기 좋은 곳": {"color": "orange", "icon": "clock"},
+    "만남 장소": {"color": "purple", "icon": "star"},
+    "계절별 추천 장소": {"color": "pink", "icon": "heart"},
+    "생활 편의 장소": {"color": "cadetblue", "icon": "info"},
+    "역사·문화 산책길": {"color": "darkred", "icon": "landmark"},
+    "비 오는 날 피하기 좋은 곳": {"color": "darkblue", "icon": "cloud-rain"},
+    "밤에도 걷기 괜찮은 길": {"color": "darkpurple", "icon": "moon"},
+}
 
 
-def init_state() -> None:
-    if "places" not in st.session_state:
-        st.session_state.places = deepcopy(DEMO_PLACES)
-    for place in st.session_state.places:
-        place.setdefault("liked_by", [])
-        place.setdefault("feeds", place.pop("comments", []))
-        district, admin_dong = infer_admin_area(place["lat"], place["lng"])
-        place.setdefault("district", district)
-        place.setdefault("admin_dong", admin_dong)
-    if "selected_place_id" not in st.session_state:
-        st.session_state.selected_place_id = None
-    if "picked_location" not in st.session_state:
-        st.session_state.picked_location = None
-    if "account_name" not in st.session_state:
-        st.session_state.account_name = "동네 주민"
-    if "place_search_results" not in st.session_state:
-        st.session_state.place_search_results = []
-    if "selected_place_name" not in st.session_state:
-        st.session_state.selected_place_name = ""
-    if "selected_place_address" not in st.session_state:
-        st.session_state.selected_place_address = ""
-
-
-def current_account() -> str:
-    account_name = st.session_state.account_name.strip()
-    return account_name or "동네 주민"
-
-
-def feed_columns(photo_count: int) -> int:
-    if photo_count == 1:
-        return 1
-    if photo_count <= 4:
-        return 2
-    return 3
-
-
-def label_options(source: dict[str, str] | dict[str, dict[str, str]]) -> dict[str, str]:
-    labels = {}
-    for key, value in source.items():
-        if isinstance(value, dict):
-            labels[f"{value['emoji']} {value['label']}"] = key
-        else:
-            labels[value] = key
-    return labels
-
-
-def is_in_seoul(lat: float, lng: float) -> bool:
-    return (
-        SEOUL_BOUNDS["min_lat"] <= lat <= SEOUL_BOUNDS["max_lat"]
-        and SEOUL_BOUNDS["min_lng"] <= lng <= SEOUL_BOUNDS["max_lng"]
-    )
-
-
-def coordinate_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    lat_scale = 111.0
-    lng_scale = 111.0 * cos(radians((lat1 + lat2) / 2))
-    return sqrt(((lat1 - lat2) * lat_scale) ** 2 + ((lng1 - lng2) * lng_scale) ** 2)
-
-
-def infer_admin_area(lat: float, lng: float) -> tuple[str, str]:
-    if not is_in_seoul(lat, lng):
-        return "서울 외 지역", "서울 외 지역"
-
-    nearest_area = min(
-        SEOUL_DONG_CENTERS.items(),
-        key=lambda item: coordinate_distance(lat, lng, item[1][0], item[1][1]),
-    )[0]
-    return nearest_area
-
-
-def seoul_district_options() -> list[str]:
-    return ["전체"] + sorted(SEOUL_ADMIN_DONGS) + ["서울 외 지역"]
-
-
-def seoul_dong_options(district: str) -> list[str]:
-    if district == "전체":
-        return ["전체"]
-    if district == "서울 외 지역":
-        return ["전체", "서울 외 지역"]
-    return ["전체"] + SEOUL_ADMIN_DONGS[district]
-
-
-def kakao_rest_api_key() -> str:
-    try:
-        secret_key = st.secrets.get("KAKAO_REST_API_KEY", "")
-    except Exception:
-        secret_key = ""
-    return secret_key or os.environ.get("KAKAO_REST_API_KEY", "")
-
-
-def candidate_label(candidate: dict) -> str:
-    address = candidate.get("address") or "주소 정보 없음"
-    source = candidate.get("source", "")
-    return f"{candidate['name']} · {address} · {source}"
-
-
-@st.cache_data(ttl=60 * 60, show_spinner=False)
-def search_place_candidates(query: str) -> list[dict]:
-    keyword = query.strip()
-    if not keyword:
-        return []
-
-    kakao_key = kakao_rest_api_key()
-    if kakao_key:
-        try:
-            response = requests.get(
-                "https://dapi.kakao.com/v2/local/search/keyword.json",
-                headers={"Authorization": f"KakaoAK {kakao_key}"},
-                params={
-                    "query": keyword,
-                    "x": 126.9780,
-                    "y": 37.5665,
-                    "radius": 20000,
-                    "size": 10,
-                    "sort": "accuracy",
-                },
-                timeout=5,
-            )
-            response.raise_for_status()
-            documents = response.json().get("documents", [])
-            candidates = []
-            for document in documents:
-                lat = float(document["y"])
-                lng = float(document["x"])
-                district, admin_dong = infer_admin_area(lat, lng)
-                candidates.append(
-                    {
-                        "name": document.get("place_name") or keyword,
-                        "address": document.get("road_address_name") or document.get("address_name", ""),
-                        "lat": lat,
-                        "lng": lng,
-                        "district": district,
-                        "admin_dong": admin_dong,
-                        "source": "Kakao",
-                    }
-                )
-            if candidates:
-                return candidates
-        except requests.RequestException:
-            pass
-
-    try:
-        response = requests.get(
-            "https://nominatim.openstreetmap.org/search",
-            headers={"User-Agent": "dongne-map/1.0"},
-            params={
-                "q": f"{keyword}, 서울, 대한민국",
-                "format": "json",
-                "limit": 10,
-                "addressdetails": 1,
-                "countrycodes": "kr",
-                "viewbox": SEOUL_VIEWBOX,
-                "bounded": 0,
-            },
-            timeout=7,
-        )
-        response.raise_for_status()
-    except requests.RequestException:
-        return []
-
-    candidates = []
-    seen_locations = set()
-    for item in response.json():
-        lat = float(item["lat"])
-        lng = float(item["lon"])
-        rounded_location = (round(lat, 5), round(lng, 5))
-        if rounded_location in seen_locations:
-            continue
-        seen_locations.add(rounded_location)
-        district, admin_dong = infer_admin_area(lat, lng)
-        display_name = item.get("display_name", "")
-        candidates.append(
+def base_place_folders() -> dict[str, list[dict]]:
+    """구별 장소 폴더. 나중에 CSV/DB로 옮길 때도 district 단위로 분리하기 쉽습니다."""
+    return {
+        "종로구": [
             {
-                "name": item.get("name") or keyword,
-                "address": display_name,
-                "lat": lat,
-                "lng": lng,
-                "district": district,
-                "admin_dong": admin_dong,
-                "source": "OpenStreetMap",
-            }
-        )
-    return candidates
+                "id": "jongno-001",
+                "district": "종로구",
+                "place_name": "청계천 광교 아래 그늘길",
+                "latitude": 37.5692,
+                "longitude": 126.9825,
+                "place_type": "걷기 좋은 길",
+                "time_period": ["점심", "저녁"],
+                "season": ["여름", "가을"],
+                "tags": ["그늘 있음", "산책하기 좋음", "혼자 가기 좋음", "사람 덜 붐빔"],
+                "description": "여름 점심 이후 다리 아래 그늘이 이어져 짧게 걷고 숨 고르기 좋음",
+                "likes": 18,
+            },
+            {
+                "id": "jongno-002",
+                "district": "종로구",
+                "place_name": "광화문역 7번 출구 앞 넓은 보도",
+                "latitude": 37.5718,
+                "longitude": 126.9769,
+                "place_type": "만남 장소",
+                "time_period": ["점심", "저녁"],
+                "season": ["사계절"],
+                "tags": ["찾기 쉬움", "친구와 가기 좋음", "기다리기 좋음"],
+                "description": "처음 오는 사람도 설명하기 쉬워 약속 전 짧게 모이기 좋음",
+                "likes": 25,
+            },
+            {
+                "id": "jongno-003",
+                "district": "종로구",
+                "place_name": "서촌 골목 낮은 담장길",
+                "latitude": 37.5795,
+                "longitude": 126.9706,
+                "place_type": "역사·문화 산책길",
+                "time_period": ["아침", "점심"],
+                "season": ["봄", "가을"],
+                "tags": ["조용함", "산책하기 좋음", "사진 찍기 좋음", "혼자 가기 좋음"],
+                "description": "이른 시간에 걸으면 골목의 생활감과 오래된 담장 분위기를 천천히 볼 수 있음",
+                "likes": 31,
+            },
+            {
+                "id": "jongno-004",
+                "district": "종로구",
+                "place_name": "익선동 골목 입구 처마 아래",
+                "latitude": 37.5741,
+                "longitude": 126.9896,
+                "place_type": "비 오는 날 피하기 좋은 곳",
+                "time_period": ["점심", "저녁"],
+                "season": ["여름", "사계절"],
+                "tags": ["비 피하기 좋음", "기다리기 좋음", "찾기 쉬움"],
+                "description": "비가 갑자기 올 때 골목 들어가기 전 우산을 정리하거나 일행을 기다리기 좋음",
+                "likes": 12,
+            },
+            {
+                "id": "jongno-005",
+                "district": "종로구",
+                "place_name": "낙산 성곽길 완만한 구간",
+                "latitude": 37.5807,
+                "longitude": 127.0077,
+                "place_type": "밤에도 걷기 괜찮은 길",
+                "time_period": ["저녁", "밤"],
+                "season": ["봄", "가을", "사계절"],
+                "tags": ["산책하기 좋음", "혼자 가기 좋음", "사진 찍기 좋음"],
+                "description": "조명이 이어지는 구간이라 저녁에 짧게 걷고 도심 야경을 보기 좋음",
+                "likes": 28,
+            },
+            {
+                "id": "jongno-006",
+                "district": "종로구",
+                "place_name": "북촌 초입 조용한 골목 쉼터",
+                "latitude": 37.5814,
+                "longitude": 126.9848,
+                "place_type": "쉬기 좋은 곳",
+                "time_period": ["아침", "점심"],
+                "season": ["봄", "가을"],
+                "tags": ["조용함", "혼자 가기 좋음", "사람 덜 붐빔"],
+                "description": "사람이 몰리는 길에서 조금 벗어나 조용히 숨을 돌리기 좋음",
+                "likes": 17,
+            },
+        ],
+        "중구": [
+            {
+                "id": "jung-001",
+                "district": "중구",
+                "place_name": "을지로입구 지하보도 연결부",
+                "latitude": 37.5661,
+                "longitude": 126.9826,
+                "place_type": "기다리기 좋은 곳",
+                "time_period": ["점심", "저녁"],
+                "season": ["겨울", "여름", "사계절"],
+                "tags": ["비 피하기 좋음", "기다리기 좋음", "찾기 쉬움"],
+                "description": "비 오거나 추울 때 지상으로 바로 나가지 않고 약속 전 10분 기다리기 좋음",
+                "likes": 22,
+            },
+            {
+                "id": "jung-002",
+                "district": "중구",
+                "place_name": "정동길 은행나무 그늘",
+                "latitude": 37.5669,
+                "longitude": 126.9728,
+                "place_type": "계절별 추천 장소",
+                "time_period": ["아침", "점심"],
+                "season": ["여름", "가을"],
+                "tags": ["그늘 있음", "조용함", "산책하기 좋음", "사진 찍기 좋음"],
+                "description": "여름에는 그늘이 좋고 가을에는 길 분위기가 좋아 천천히 걷기 좋음",
+                "likes": 36,
+            },
+            {
+                "id": "jung-003",
+                "district": "중구",
+                "place_name": "서울도서관 옆 쉬어가는 벤치",
+                "latitude": 37.5664,
+                "longitude": 126.9779,
+                "place_type": "쉬기 좋은 곳",
+                "time_period": ["점심", "저녁"],
+                "season": ["봄", "가을", "사계절"],
+                "tags": ["햇빛 좋음", "기다리기 좋음", "친구와 가기 좋음"],
+                "description": "시청 주변 이동 중 잠깐 앉아 일정을 정리하거나 일행을 기다리기 좋음",
+                "likes": 15,
+            },
+            {
+                "id": "jung-004",
+                "district": "중구",
+                "place_name": "남산골 한옥마을 바깥 산책로",
+                "latitude": 37.5593,
+                "longitude": 126.9946,
+                "place_type": "역사·문화 산책길",
+                "time_period": ["아침", "점심", "저녁"],
+                "season": ["봄", "가을"],
+                "tags": ["조용함", "산책하기 좋음", "사진 찍기 좋음", "사람 덜 붐빔"],
+                "description": "관광지 안쪽보다 바깥 산책로가 차분해서 생활 산책 느낌으로 걷기 좋음",
+                "likes": 20,
+            },
+            {
+                "id": "jung-005",
+                "district": "중구",
+                "place_name": "동대문디자인플라자 주변 밝은 보행로",
+                "latitude": 37.5668,
+                "longitude": 127.0096,
+                "place_type": "밤에도 걷기 괜찮은 길",
+                "time_period": ["저녁", "밤"],
+                "season": ["사계절"],
+                "tags": ["찾기 쉬움", "친구와 가기 좋음", "사진 찍기 좋음"],
+                "description": "밤에도 주변이 밝고 길 찾기가 쉬워 전시나 약속 뒤 이동하기 괜찮음",
+                "likes": 19,
+            },
+            {
+                "id": "jung-006",
+                "district": "중구",
+                "place_name": "충무로역 근처 편의시설 모임점",
+                "latitude": 37.5614,
+                "longitude": 126.9940,
+                "place_type": "생활 편의 장소",
+                "time_period": ["아침", "점심", "저녁"],
+                "season": ["사계절"],
+                "tags": ["찾기 쉬움", "기다리기 좋음", "친구와 가기 좋음"],
+                "description": "지하철 환승 전후로 물을 사거나 일행을 기다리며 동선을 정리하기 좋음",
+                "likes": 9,
+            },
+        ],
+    }
 
 
-def matches_any(selected: list[str], values: list[str], include_all: bool = False) -> bool:
-    if not selected:
-        return True
-    if include_all and "all" in values:
-        return True
-    return any(value in selected for value in values)
+COURSES = [
+    {
+        "district": "종로구",
+        "name": "종로 조용한 산책 코스",
+        "place_ids": ["jongno-006", "jongno-003", "jongno-001"],
+        "description": "북촌과 서촌 골목의 조용한 구간을 지나 청계천으로 내려오는 짧은 생활 산책 코스",
+    },
+    {
+        "district": "종로구",
+        "name": "청계천 주변 기다림 코스",
+        "place_ids": ["jongno-002", "jongno-001", "jongno-004"],
+        "description": "약속 전후로 찾기 쉽고 기다리기 쉬운 장소를 청계천 주변으로 연결한 코스",
+    },
+    {
+        "district": "중구",
+        "name": "중구 도심 쉬어가기 코스",
+        "place_ids": ["jung-003", "jung-002", "jung-006"],
+        "description": "시청과 정동, 충무로 주변에서 잠깐 앉고 걷고 동선을 정리하기 좋은 코스",
+    },
+    {
+        "district": "중구",
+        "name": "중구 밤 산책 코스",
+        "place_ids": ["jung-001", "jung-005"],
+        "description": "지하 이동과 밝은 보행로를 활용해 밤에도 비교적 길 찾기 쉬운 이동 코스",
+    },
+]
 
 
-def filter_places(
-    places: list[dict],
-    selected_district: str,
-    selected_admin_dong: str,
-    selected_types: list[str],
-    selected_times: list[str],
-    selected_seasons: list[str],
-    selected_tags: list[str],
-) -> list[dict]:
+def init_session_state() -> None:
+    if "place_folders" not in st.session_state:
+        st.session_state.place_folders = base_place_folders()
+
+    defaults = {
+        "selected_folder": "종로구 폴더",
+        "filter_types": [],
+        "filter_time": "전체",
+        "filter_season": "전체",
+        "filter_tags": [],
+    }
+    for key, value in defaults.items():
+        st.session_state.setdefault(key, value)
+
+
+def reset_filters() -> None:
+    st.session_state.filter_types = []
+    st.session_state.filter_time = "전체"
+    st.session_state.filter_season = "전체"
+    st.session_state.filter_tags = []
+
+
+def apply_preset(types: list[str] | None = None, time: str = "전체", season: str = "전체", tags: list[str] | None = None) -> None:
+    st.session_state.filter_types = types or []
+    st.session_state.filter_time = time
+    st.session_state.filter_season = season
+    st.session_state.filter_tags = tags or []
+
+
+def folder_to_district(folder_name: str) -> str | None:
+    if folder_name == "종로구 폴더":
+        return "종로구"
+    if folder_name == "중구 폴더":
+        return "중구"
+    return None
+
+
+def all_places() -> list[dict]:
     return [
         place
+        for places in st.session_state.place_folders.values()
         for place in places
-        if (selected_district == "전체" or place["district"] == selected_district)
-        and (selected_admin_dong == "전체" or place["admin_dong"] == selected_admin_dong)
-        and matches_any(selected_types, [place["type"]])
-        and matches_any(selected_times, place["time_slot"])
-        and matches_any(selected_seasons, place["season"], include_all=True)
-        and matches_any(selected_tags, place["tags"])
     ]
 
 
-def marker_html(place_type: str) -> str:
-    meta = PLACE_TYPES[place_type]
+def folder_dataframe(folder_name: str) -> pd.DataFrame:
+    district = folder_to_district(folder_name)
+    places = st.session_state.place_folders[district] if district else all_places()
+    return pd.DataFrame(places)
+
+
+def as_text(value: list[str] | str) -> str:
+    if isinstance(value, list):
+        return ", ".join(value)
+    return str(value)
+
+
+def filter_places(df: pd.DataFrame) -> pd.DataFrame:
+    filtered = df.copy()
+
+    if st.session_state.filter_types:
+        filtered = filtered[filtered["place_type"].isin(st.session_state.filter_types)]
+
+    if st.session_state.filter_time != "전체":
+        filtered = filtered[
+            filtered["time_period"].apply(lambda values: st.session_state.filter_time in values)
+        ]
+
+    if st.session_state.filter_season != "전체":
+        filtered = filtered[
+            filtered["season"].apply(
+                lambda values: st.session_state.filter_season in values or "사계절" in values
+            )
+        ]
+
+    if st.session_state.filter_tags:
+        selected_tags = set(st.session_state.filter_tags)
+        filtered = filtered[
+            filtered["tags"].apply(lambda values: bool(selected_tags.intersection(values)))
+        ]
+
+    return filtered
+
+
+def popup_html(row: pd.Series) -> str:
     return f"""
-    <div style="
-        width: 36px;
-        height: 36px;
-        border-radius: 999px;
-        background: {meta["color"]};
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 3px solid white;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
-        font-size: 18px;
-    ">{meta["emoji"]}</div>
+    <div style="width:260px">
+        <h4 style="margin:0 0 6px 0;">{row.place_name}</h4>
+        <b>장소 폴더</b>: {row.district}<br>
+        <b>유형</b>: {row.place_type}<br>
+        <b>추천 시간대</b>: {as_text(row.time_period)}<br>
+        <b>추천 계절</b>: {as_text(row.season)}<br>
+        <b>태그</b>: {as_text(row.tags)}<br>
+        <b>공감</b>: {row.likes}<br>
+        <p style="margin:8px 0 0 0;">{row.description}</p>
+    </div>
     """
 
 
-def make_map(places: list[dict], picked_location: dict | None) -> folium.Map:
-    if places:
-        center = [
-            sum(place["lat"] for place in places) / len(places),
-            sum(place["lng"] for place in places) / len(places),
-        ]
-        zoom_start = 14 if len(places) > 1 else 16
-    elif picked_location:
-        center = [picked_location["lat"], picked_location["lng"]]
-        zoom_start = 16
-    else:
-        center = [37.567, 126.979]
-        zoom_start = 12
+def build_map(filtered_df: pd.DataFrame, folder_name: str) -> folium.Map:
+    view = MAP_VIEWS[folder_name]
+    m = folium.Map(location=view["center"], zoom_start=view["zoom"], tiles="CartoDB positron")
 
-    dongne_map = folium.Map(
-        location=center,
-        zoom_start=zoom_start,
-        tiles="CartoDB positron",
-        control_scale=True,
+    for _, row in filtered_df.iterrows():
+        style = TYPE_STYLES.get(row.place_type, {"color": "gray", "icon": "info"})
+        folium.Marker(
+            location=[row.latitude, row.longitude],
+            tooltip=f"{row.district} | {row.place_name}",
+            popup=folium.Popup(popup_html(row), max_width=320),
+            icon=folium.Icon(color=style["color"], icon=style["icon"], prefix="fa"),
+        ).add_to(m)
+
+    if not filtered_df.empty:
+        m.fit_bounds(filtered_df[["latitude", "longitude"]].values.tolist(), padding=(28, 28))
+
+    return m
+
+
+def render_sidebar() -> None:
+    st.sidebar.header("장소 폴더")
+    st.sidebar.radio("구별로 먼저 선택", FOLDER_OPTIONS, key="selected_folder")
+    st.sidebar.caption("장소가 섞여 보이지 않도록 선택한 폴더 안의 장소만 지도에 표시합니다.")
+
+    st.sidebar.divider()
+    st.sidebar.header("빠른 추천")
+    st.sidebar.button(
+        "여름 그늘길 보기",
+        use_container_width=True,
+        on_click=apply_preset,
+        kwargs={"types": ["걷기 좋은 길", "쉬기 좋은 곳", "계절별 추천 장소"], "season": "여름", "tags": ["그늘 있음"]},
+    )
+    st.sidebar.button(
+        "비 오는 날 피하기 좋은 곳 보기",
+        use_container_width=True,
+        on_click=apply_preset,
+        kwargs={"types": ["비 오는 날 피하기 좋은 곳"], "tags": ["비 피하기 좋음"]},
+    )
+    st.sidebar.button(
+        "약속 전 기다리기 좋은 곳 보기",
+        use_container_width=True,
+        on_click=apply_preset,
+        kwargs={"types": ["기다리기 좋은 곳", "만남 장소"], "tags": ["기다리기 좋음", "찾기 쉬움"]},
+    )
+    st.sidebar.button(
+        "혼자 걷기 좋은 길 보기",
+        use_container_width=True,
+        on_click=apply_preset,
+        kwargs={"types": ["걷기 좋은 길", "역사·문화 산책길"], "tags": ["혼자 가기 좋음", "산책하기 좋음"]},
+    )
+    st.sidebar.button(
+        "밤에도 걷기 괜찮은 길 보기",
+        use_container_width=True,
+        on_click=apply_preset,
+        kwargs={"types": ["밤에도 걷기 괜찮은 길"], "time": "밤"},
     )
 
-    for place in places:
-        meta = PLACE_TYPES[place["type"]]
-        popup = folium.Popup(
-            f"""
-            <strong>{place["name"]}</strong><br>
-            {place["district"]} {place["admin_dong"]}<br>
-            {meta["emoji"]} {meta["label"]}<br>
-            ❤️ {place["likes"]}<br>
-            {place["description"]}
-            """,
-            max_width=280,
-        )
-        folium.Marker(
-            location=[place["lat"], place["lng"]],
-            tooltip=place["name"],
-            popup=popup,
-            icon=folium.DivIcon(html=marker_html(place["type"])),
-        ).add_to(dongne_map)
+    st.sidebar.divider()
+    st.sidebar.header("폴더 안 필터")
+    st.sidebar.multiselect("장소 유형", PLACE_TYPES, key="filter_types")
+    st.sidebar.selectbox("시간대", ["전체"] + TIME_PERIODS, key="filter_time")
+    st.sidebar.selectbox("계절", ["전체"] + SEASONS, key="filter_season")
+    st.sidebar.multiselect("태그", TAGS, key="filter_tags")
 
-    if picked_location:
-        folium.Marker(
-            location=[picked_location["lat"], picked_location["lng"]],
-            tooltip="새 장소 위치",
-            icon=folium.Icon(color="red", icon="map-pin", prefix="fa"),
-        ).add_to(dongne_map)
-
-    return dongne_map
-
-
-def render_place_card(place: dict) -> None:
-    meta = PLACE_TYPES[place["type"]]
-    time_text = ", ".join(TIME_LABELS[item] for item in place["time_slot"])
-    season_text = ", ".join(SEASON_LABELS[item] for item in place["season"])
-    account_name = current_account()
-    already_liked = account_name in place["liked_by"]
-
-    with st.container(border=True):
-        st.subheader(f"{meta['emoji']} {place['name']}")
-        st.caption(f"{place['district']} {place['admin_dong']} · {meta['label']} · {time_text} · {season_text}")
-        st.write(place["description"])
-        if place["tags"]:
-            st.write(" ".join(f"`#{tag}`" for tag in place["tags"]))
-
-        left, right = st.columns([1, 2])
-        with left:
-            like_label = f"❤️ 공감 {place['likes']}"
-            if already_liked:
-                like_label = f"❤️ 공감 완료 {place['likes']}"
-            if st.button(like_label, key=f"like-{place['id']}", disabled=already_liked):
-                place["likes"] += 1
-                place["liked_by"].append(account_name)
-                st.rerun()
-        with right:
-            st.caption(f"등록일 {place['created_at']}")
-
-        if place["supplements"]:
-            st.markdown("**주민이 덧붙인 정보**")
-            for supplement in place["supplements"]:
-                st.info(supplement)
-
-        st.divider()
-        st.markdown(f"**사진 피드 {len(place['feeds'])}개**")
-        if place["feeds"]:
-            for feed in reversed(place["feeds"]):
-                with st.container(border=True):
-                    st.caption(f"{feed['author']} · {feed['created_at']}")
-                    photos = feed.get("photos", [])
-                    if photos:
-                        columns = st.columns(feed_columns(len(photos)))
-                        for index, photo in enumerate(photos):
-                            with columns[index % len(columns)]:
-                                st.image(photo["data"], caption=photo["name"], use_container_width=True)
-                    st.write(feed.get("review", feed.get("content", "")))
-        else:
-            st.caption("아직 사진 피드가 없습니다.")
-
-        with st.form(f"feed-form-{place['id']}", clear_on_submit=True):
-            photos = st.file_uploader(
-                "사진 업로드",
-                type=["jpg", "jpeg", "png", "webp"],
-                accept_multiple_files=True,
-                key=f"feed-photos-{place['id']}",
-            )
-            review = st.text_area(
-                "한줄평",
-                placeholder="이 장소에서 찍은 사진과 함께 남길 한줄평을 적어주세요.",
-                height=100,
-                max_chars=500,
-                key=f"feed-review-{place['id']}",
-            )
-            st.caption(f"{len(review)} / 500자 · 사진은 피드당 최대 10장")
-            submitted = st.form_submit_button("피드 등록")
-
-        if submitted:
-            if not photos:
-                st.error("사진을 1장 이상 업로드해 주세요.")
-                return
-            if len(photos) > 10:
-                st.error("사진은 한 피드당 최대 10장까지 업로드할 수 있습니다.")
-                return
-            if not review.strip():
-                st.error("한줄평을 입력해 주세요.")
-                return
-            if len(review.strip()) > 500:
-                st.error("한줄평은 500자 이하로 작성해 주세요.")
-                return
-            place["feeds"].append(
-                {
-                    "id": str(uuid4()),
-                    "author": account_name,
-                    "review": review.strip(),
-                    "photos": [
-                        {
-                            "name": photo.name,
-                            "type": photo.type,
-                            "data": photo.getvalue(),
-                        }
-                        for photo in photos
-                    ],
-                    "created_at": date.today().isoformat(),
-                }
-            )
-            st.success("사진 피드가 등록되었습니다.")
-            st.rerun()
-
-
-def render_courses(places: list[dict]) -> None:
-    place_by_id = {place["id"]: place for place in st.session_state.places}
-    st.subheader("추천 코스")
-    for course in DEMO_COURSES:
-        course_places = [place_by_id[place_id] for place_id in course["place_ids"] if place_id in place_by_id]
-        if not course_places:
-            continue
-        if places and not any(place in places for place in course_places):
-            continue
-        with st.container(border=True):
-            st.markdown(f"**{course['title']}**")
-            st.caption(course["description"])
-            st.write(" → ".join(place["name"] for place in course_places))
-
-
-def render_add_place_form() -> None:
-    st.subheader("장소 등록")
-    st.caption("장소명을 검색해 후보를 고르거나 지도에서 위치를 클릭하면 좌표가 자동으로 들어옵니다.")
-
-    search_query = st.text_input(
-        "장소명 검색",
-        placeholder="예: 서울시청, 광화문광장, 망원시장",
-        key="place_search_query",
-    )
-    search_left, search_right = st.columns([1, 1])
-    with search_left:
-        if st.button("검색하기", use_container_width=True):
-            if not search_query.strip():
-                st.warning("검색할 장소명을 입력해 주세요.")
-            else:
-                with st.spinner("장소 후보를 찾는 중입니다."):
-                    st.session_state.place_search_results = search_place_candidates(search_query)
-                if not st.session_state.place_search_results:
-                    st.error("검색 결과가 없습니다. 장소명을 조금 더 구체적으로 입력해 주세요.")
-    with search_right:
-        if st.button("선택 초기화", use_container_width=True):
-            st.session_state.picked_location = None
-            st.session_state.selected_place_name = ""
-            st.session_state.selected_place_address = ""
-            st.session_state.place_search_results = []
-            st.rerun()
-
-    if st.session_state.place_search_results:
-        labels = [candidate_label(candidate) for candidate in st.session_state.place_search_results]
-        selected_label = st.selectbox("연관 장소 후보", labels)
-        selected_candidate = st.session_state.place_search_results[labels.index(selected_label)]
-        st.caption(
-            f"{selected_candidate['district']} {selected_candidate['admin_dong']} · "
-            f"{selected_candidate['lat']:.5f}, {selected_candidate['lng']:.5f}"
-        )
-        if st.button("이 장소로 좌표 지정", type="primary", use_container_width=True):
-            st.session_state.picked_location = {
-                "lat": selected_candidate["lat"],
-                "lng": selected_candidate["lng"],
-            }
-            st.session_state.selected_place_name = selected_candidate["name"]
-            st.session_state.selected_place_address = selected_candidate["address"]
-            st.rerun()
-
-    picked = st.session_state.picked_location
-    if picked:
-        suggested_district, suggested_dong = infer_admin_area(picked["lat"], picked["lng"])
-        st.success(f"선택된 위치: {picked['lat']:.5f}, {picked['lng']:.5f}")
-        st.caption(f"자동 분류: {suggested_district} {suggested_dong}")
-        if st.session_state.selected_place_address:
-            st.caption(f"선택한 주소: {st.session_state.selected_place_address}")
-    else:
-        suggested_district, suggested_dong = "종로구", "종로1·2·3·4가동"
-        st.warning("먼저 장소를 검색해 좌표를 지정하거나 지도에서 등록할 위치를 클릭해 주세요.")
-
-    type_labels = label_options(PLACE_TYPES)
-    time_labels = label_options(TIME_LABELS)
-    season_labels = label_options(SEASON_LABELS)
-
-    with st.form("add-place-form", clear_on_submit=True):
-        name = st.text_input(
-            "장소 이름",
-            value=st.session_state.selected_place_name,
-            placeholder="예: 동네 느티나무 벤치",
-        )
-        district_values = sorted(SEOUL_ADMIN_DONGS) + ["서울 외 지역"]
-        district_index = district_values.index(suggested_district) if suggested_district in district_values else 0
-        district = st.selectbox("자치구", district_values, index=district_index)
-        dong_values = SEOUL_ADMIN_DONGS.get(district, ["서울 외 지역"])
-        dong_index = dong_values.index(suggested_dong) if suggested_dong in dong_values else 0
-        admin_dong = st.selectbox("행정동", dong_values, index=dong_index)
-        place_type_label = st.selectbox("장소 유형", list(type_labels.keys()))
-        time_label_values = st.multiselect("이용 시간대", list(time_labels.keys()))
-        season_label_values = st.multiselect("추천 계절", list(season_labels.keys()))
-        selected_tags = st.multiselect("태그", ALL_TAGS)
-        description = st.text_area(
-            "한 줄 설명",
-            placeholder="이 장소를 어떻게 사용하는지 간단히 적어주세요.",
-            height=120,
-        )
-        submitted = st.form_submit_button("등록하기", type="primary")
-
-    if submitted:
-        if not picked or not name.strip() or not description.strip() or not time_label_values or not season_label_values:
-            st.error("위치, 이름, 시간대, 계절, 설명을 모두 입력해 주세요.")
-            return
-
-        st.session_state.places.append(
-            {
-                "id": str(uuid4()),
-                "lat": picked["lat"],
-                "lng": picked["lng"],
-                "name": name.strip(),
-                "district": district,
-                "admin_dong": admin_dong,
-                "type": type_labels[place_type_label],
-                "time_slot": [time_labels[label] for label in time_label_values],
-                "season": [season_labels[label] for label in season_label_values],
-                "tags": selected_tags,
-                "description": description.strip(),
-                "likes": 0,
-                "liked_by": [],
-                "created_at": date.today().isoformat(),
-                "feeds": [],
-                "supplements": [],
-            }
-        )
-        st.session_state.picked_location = None
-        st.session_state.selected_place_name = ""
-        st.session_state.selected_place_address = ""
-        st.session_state.place_search_results = []
-        st.success("장소가 등록되었습니다.")
+    if st.sidebar.button("필터 초기화", use_container_width=True):
+        reset_filters()
         st.rerun()
 
 
-def main() -> None:
-    init_state()
+def render_folder_overview() -> None:
+    cols = st.columns(2)
+    for index, district in enumerate(DISTRICTS):
+        places = st.session_state.place_folders[district]
+        type_counter = Counter(place["place_type"] for place in places)
+        tag_counter = Counter(tag for place in places for tag in place["tags"])
+        with cols[index]:
+            with st.container(border=True):
+                st.subheader(f"{district} 폴더")
+                st.metric("등록된 장소", f"{len(places)}곳")
+                st.caption(f"대표 유형: {type_counter.most_common(1)[0][0]}")
+                st.caption(f"대표 태그: {tag_counter.most_common(1)[0][0]}")
 
-    st.title("🗺️ 동네 사용설명서")
-    st.caption("서울의 장소를 행정동 단위로 나눠 보고, 주민이 아는 작은 정보를 더합니다.")
 
-    with st.sidebar:
-        st.header("내 계정")
-        st.text_input("계정 이름", key="account_name")
-        st.caption(f"{current_account()} 계정으로 공감과 사진 피드를 남깁니다.")
+def render_summary(filtered_df: pd.DataFrame) -> None:
+    tag_counter = Counter(tag for tags in filtered_df["tags"] for tag in tags) if not filtered_df.empty else Counter()
+    type_counter = Counter(filtered_df["place_type"]) if not filtered_df.empty else Counter()
+    avg_likes = filtered_df["likes"].mean() if not filtered_df.empty else 0
 
-        st.divider()
-        st.header("필터")
-        type_labels = label_options(PLACE_TYPES)
-        time_labels = label_options(TIME_LABELS)
-        season_labels = label_options(SEASON_LABELS)
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("현재 폴더 표시 장소", f"{len(filtered_df)}곳")
+    col2.metric("가장 많은 유형", type_counter.most_common(1)[0][0] if type_counter else "-")
+    col3.metric("가장 많은 태그", tag_counter.most_common(1)[0][0] if tag_counter else "-")
+    col4.metric("평균 공감 수", f"{avg_likes:.1f}")
 
-        selected_district = st.selectbox("자치구", seoul_district_options())
-        selected_admin_dong = st.selectbox("행정동", seoul_dong_options(selected_district))
-        selected_type_labels = st.multiselect("장소 유형", list(type_labels.keys()))
-        selected_time_labels = st.multiselect("시간대", list(time_labels.keys()))
-        selected_season_labels = st.multiselect("계절", list(season_labels.keys()))
-        selected_tags = st.multiselect("태그", ALL_TAGS)
+    if not filtered_df.empty:
+        counts = filtered_df["district"].value_counts().reindex(DISTRICTS, fill_value=0)
+        st.caption(f"종로구 {counts['종로구']}곳 · 중구 {counts['중구']}곳")
 
-        st.divider()
-        render_add_place_form()
 
-    selected_types = [type_labels[label] for label in selected_type_labels]
-    selected_times = [time_labels[label] for label in selected_time_labels]
-    selected_seasons = [season_labels[label] for label in selected_season_labels]
+def render_place_cards(filtered_df: pd.DataFrame) -> None:
+    if filtered_df.empty:
+        st.info("현재 폴더와 필터에 맞는 장소가 없습니다.")
+        return
 
-    filtered_places = filter_places(
-        st.session_state.places,
-        selected_district,
-        selected_admin_dong,
-        selected_types,
-        selected_times,
-        selected_seasons,
-        selected_tags,
+    for _, row in filtered_df.sort_values(["district", "place_type", "likes"], ascending=[True, True, False]).iterrows():
+        with st.container(border=True):
+            st.markdown(f"**[{row.district}] {row.place_name}**")
+            st.caption(f"{row.place_type} · {as_text(row.time_period)} · {as_text(row.season)} · 공감 {row.likes}")
+            st.write(row.description)
+            st.write(" ".join(f"`#{tag}`" for tag in row.tags))
+
+
+def render_courses(folder_name: str) -> None:
+    district = folder_to_district(folder_name)
+    visible_courses = [course for course in COURSES if district is None or course["district"] == district]
+    lookup = {place["id"]: place["place_name"] for place in all_places()}
+
+    cols = st.columns(2)
+    for index, course in enumerate(visible_courses):
+        with cols[index % 2]:
+            with st.container(border=True):
+                names = [lookup[place_id] for place_id in course["place_ids"] if place_id in lookup]
+                st.subheader(course["name"])
+                st.caption(f"{course['district']} 폴더")
+                st.write(course["description"])
+                st.caption(" -> ".join(names))
+
+
+def render_place_form() -> None:
+    current_district = folder_to_district(st.session_state.selected_folder) or "종로구"
+
+    st.subheader("장소 등록")
+    st.caption(
+        "등록한 장소는 선택한 구의 장소 폴더에 임시 저장됩니다. "
+        "일반 리뷰보다 이 장소를 어떤 상황에서 어떻게 사용하는지 적어주세요."
     )
 
-    map_col, info_col = st.columns([1.55, 1], gap="large")
+    with st.form("place_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        district = col1.selectbox("저장할 장소 폴더", DISTRICTS, index=DISTRICTS.index(current_district))
+        place_name = col2.text_input("장소 이름", placeholder="예: 정동길 은행나무 그늘")
 
-    with map_col:
-        area_label = selected_district if selected_admin_dong == "전체" else f"{selected_district} {selected_admin_dong}"
-        st.markdown(f"**{area_label} 표시 중인 장소 {len(filtered_places)}곳**")
-        map_state = st_folium(
-            make_map(filtered_places, st.session_state.picked_location),
-            height=680,
-            use_container_width=True,
-            returned_objects=["last_clicked"],
+        col3, col4 = st.columns(2)
+        latitude = col3.number_input("위도", min_value=37.45, max_value=37.70, value=37.5708, format="%.6f")
+        longitude = col4.number_input("경도", min_value=126.85, max_value=127.10, value=126.9911, format="%.6f")
+
+        col5, col6, col7 = st.columns(3)
+        place_type = col5.selectbox("장소 유형", PLACE_TYPES)
+        time_period = col6.multiselect("추천 시간대", TIME_PERIODS, default=["점심"])
+        season = col7.multiselect("추천 계절", SEASONS, default=["사계절"])
+
+        tags = st.multiselect("태그", TAGS, default=["기다리기 좋음"])
+        description = st.text_input(
+            "한 줄 설명",
+            placeholder="예: 을지로에서 약속 전 10분 정도 기다리기 좋음",
         )
-        if map_state.get("last_clicked"):
-            clicked = map_state["last_clicked"]
-            picked_location = {
-                "lat": clicked["lat"],
-                "lng": clicked["lng"],
+
+        submitted = st.form_submit_button("해당 구 폴더에 임시 등록")
+
+    if submitted:
+        if not place_name or not description or not time_period or not season or not tags:
+            st.warning("장소 이름, 시간대, 계절, 태그, 한 줄 설명을 모두 입력해주세요.")
+            return
+
+        st.session_state.place_folders[district].append(
+            {
+                "id": f"{district}-{uuid4().hex[:8]}",
+                "district": district,
+                "place_name": place_name,
+                "latitude": latitude,
+                "longitude": longitude,
+                "place_type": place_type,
+                "time_period": time_period,
+                "season": season,
+                "tags": tags,
+                "description": description,
+                "likes": 0,
             }
-            if picked_location != st.session_state.picked_location:
-                st.session_state.picked_location = picked_location
-                st.session_state.selected_place_address = ""
-                st.rerun()
+        )
+        st.success(f"{district} 폴더에 장소가 임시 등록되었습니다. 새로고침하면 사라질 수 있습니다.")
 
-    with info_col:
-        tab_places, tab_courses, tab_about = st.tabs(["장소", "코스", "소개"])
-        with tab_places:
-            if not filtered_places:
-                st.info("조건에 맞는 장소가 없습니다.")
-            for place in sorted(filtered_places, key=lambda item: item["likes"], reverse=True):
-                render_place_card(place)
 
-        with tab_courses:
-            render_courses(filtered_places)
+def render_principles() -> None:
+    with st.expander("개인정보 및 운영 원칙"):
+        st.write(
+            """
+            - 이 서비스는 신고나 비판이 아니라 생활정보 공유를 위한 지도입니다.
+            - 사람의 얼굴, 차량번호, 상세 주거지 정보가 드러나는 사진은 올리지 말아주세요.
+            - 특정 개인, 상점, 건물에 대한 비방 표현은 제한됩니다.
+            - 장소 설명은 긍정적이고 중립적인 생활 팁 중심으로 작성해주세요.
+            """
+        )
 
-        with tab_about:
-            st.subheader("PGIS 기반 주민 참여형 지도")
-            st.write(
-                "동네 사용설명서는 주민들이 직접 발견한 쉬는 곳, 걷기 좋은 길, "
-                "기다리기 좋은 장소, 생활 편의 정보를 서울 행정동 단위로 모아 보는 작은 지도입니다."
-            )
-            st.write("Railway에서는 이 파일을 `streamlit run app.py`로 실행하면 됩니다.")
+
+def main() -> None:
+    init_session_state()
+    render_sidebar()
+
+    st.title("동네 사용설명서")
+    st.subheader("지도에는 없지만, 주민은 알고 있는 장소들")
+    st.write("종로구와 중구의 생활경험 장소를 구별 폴더에 나누어 기록하는 PGIS 기반 도심 생활지도입니다.")
+
+    render_folder_overview()
+
+    folder_name = st.session_state.selected_folder
+    folder_df = folder_dataframe(folder_name)
+    filtered_df = filter_places(folder_df)
+
+    st.divider()
+    st.header(folder_name)
+    st.caption("선택한 장소 폴더 안에서만 지도와 목록이 갱신됩니다.")
+    render_summary(filtered_df)
+
+    map_col, list_col = st.columns([1.35, 1], gap="large")
+    with map_col:
+        st.subheader("폴더 지도")
+        st_folium(build_map(filtered_df, folder_name), width=None, height=560)
+
+    with list_col:
+        st.subheader("폴더 안 장소")
+        render_place_cards(filtered_df)
+
+    with st.expander("표로 보기", expanded=False):
+        table_df = filtered_df.copy()
+        if not table_df.empty:
+            table_df["time_period"] = table_df["time_period"].apply(as_text)
+            table_df["season"] = table_df["season"].apply(as_text)
+            table_df["tags"] = table_df["tags"].apply(as_text)
+        st.dataframe(
+            table_df[
+                [
+                    "district",
+                    "place_name",
+                    "place_type",
+                    "time_period",
+                    "season",
+                    "tags",
+                    "description",
+                    "likes",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    st.divider()
+    st.subheader("추천 코스 예시")
+    render_courses(folder_name)
+
+    st.divider()
+    render_place_form()
+
+    st.divider()
+    render_principles()
 
 
 if __name__ == "__main__":
