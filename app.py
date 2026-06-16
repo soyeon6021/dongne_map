@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import date
+from math import cos, radians, sqrt
 from uuid import uuid4
 
 import folium
@@ -51,6 +52,118 @@ TAG_GROUPS = {
 
 ALL_TAGS = [tag for tags in TAG_GROUPS.values() for tag in tags]
 
+SEOUL_BOUNDS = {
+    "min_lat": 37.413,
+    "max_lat": 37.715,
+    "min_lng": 126.734,
+    "max_lng": 127.270,
+}
+
+SEOUL_ADMIN_DONGS = {
+    "강남구": ["신사동", "논현1동", "논현2동", "압구정동", "청담동", "삼성1동", "삼성2동", "대치1동", "대치2동", "대치4동", "역삼1동", "역삼2동", "도곡1동", "도곡2동", "개포1동", "개포2동", "개포3동", "개포4동", "세곡동", "일원본동", "일원1동", "수서동"],
+    "강동구": ["강일동", "상일1동", "상일2동", "명일1동", "명일2동", "고덕1동", "고덕2동", "암사1동", "암사2동", "암사3동", "천호1동", "천호2동", "천호3동", "성내1동", "성내2동", "성내3동", "길동", "둔촌1동", "둔촌2동"],
+    "강북구": ["삼양동", "미아동", "송중동", "송천동", "삼각산동", "번1동", "번2동", "번3동", "수유1동", "수유2동", "수유3동", "우이동", "인수동"],
+    "강서구": ["염창동", "등촌1동", "등촌2동", "등촌3동", "화곡본동", "화곡1동", "화곡2동", "화곡3동", "화곡4동", "화곡6동", "화곡8동", "우장산동", "가양1동", "가양2동", "가양3동", "발산1동", "공항동", "방화1동", "방화2동", "방화3동"],
+    "관악구": ["보라매동", "은천동", "성현동", "중앙동", "청림동", "행운동", "청룡동", "낙성대동", "인헌동", "남현동", "신림동", "신사동", "조원동", "미성동", "난곡동", "난향동", "서원동", "신원동", "서림동", "삼성동", "대학동"],
+    "광진구": ["중곡1동", "중곡2동", "중곡3동", "중곡4동", "능동", "구의1동", "구의2동", "구의3동", "광장동", "자양1동", "자양2동", "자양3동", "자양4동", "화양동", "군자동"],
+    "구로구": ["신도림동", "구로1동", "구로2동", "구로3동", "구로4동", "구로5동", "가리봉동", "고척1동", "고척2동", "개봉1동", "개봉2동", "개봉3동", "오류1동", "오류2동", "수궁동", "항동"],
+    "금천구": ["가산동", "독산1동", "독산2동", "독산3동", "독산4동", "시흥1동", "시흥2동", "시흥3동", "시흥4동", "시흥5동"],
+    "노원구": ["월계1동", "월계2동", "월계3동", "공릉1동", "공릉2동", "하계1동", "하계2동", "중계본동", "중계1동", "중계2·3동", "중계4동", "상계1동", "상계2동", "상계3·4동", "상계5동", "상계6·7동", "상계8동", "상계9동", "상계10동"],
+    "도봉구": ["쌍문1동", "쌍문2동", "쌍문3동", "쌍문4동", "방학1동", "방학2동", "방학3동", "창1동", "창2동", "창3동", "창4동", "창5동", "도봉1동", "도봉2동"],
+    "동대문구": ["용신동", "제기동", "전농1동", "전농2동", "답십리1동", "답십리2동", "장안1동", "장안2동", "청량리동", "회기동", "휘경1동", "휘경2동", "이문1동", "이문2동"],
+    "동작구": ["노량진1동", "노량진2동", "상도1동", "상도2동", "상도3동", "상도4동", "흑석동", "사당1동", "사당2동", "사당3동", "사당4동", "사당5동", "대방동", "신대방1동", "신대방2동"],
+    "마포구": ["공덕동", "아현동", "도화동", "용강동", "대흥동", "염리동", "신수동", "서강동", "서교동", "합정동", "망원1동", "망원2동", "연남동", "성산1동", "성산2동", "상암동"],
+    "서대문구": ["충현동", "천연동", "북아현동", "신촌동", "연희동", "홍제1동", "홍제2동", "홍제3동", "홍은1동", "홍은2동", "남가좌1동", "남가좌2동", "북가좌1동", "북가좌2동"],
+    "서초구": ["서초1동", "서초2동", "서초3동", "서초4동", "잠원동", "반포본동", "반포1동", "반포2동", "반포3동", "반포4동", "방배본동", "방배1동", "방배2동", "방배3동", "방배4동", "양재1동", "양재2동", "내곡동"],
+    "성동구": ["왕십리도선동", "왕십리2동", "마장동", "사근동", "행당1동", "행당2동", "응봉동", "금호1가동", "금호2·3가동", "금호4가동", "옥수동", "성수1가1동", "성수1가2동", "성수2가1동", "성수2가3동", "송정동", "용답동"],
+    "성북구": ["성북동", "삼선동", "동선동", "돈암1동", "돈암2동", "안암동", "보문동", "정릉1동", "정릉2동", "정릉3동", "정릉4동", "길음1동", "길음2동", "종암동", "월곡1동", "월곡2동", "장위1동", "장위2동", "장위3동", "석관동"],
+    "송파구": ["풍납1동", "풍납2동", "거여1동", "거여2동", "마천1동", "마천2동", "방이1동", "방이2동", "오륜동", "오금동", "송파1동", "송파2동", "석촌동", "삼전동", "가락본동", "가락1동", "가락2동", "문정1동", "문정2동", "장지동", "위례동", "잠실본동", "잠실2동", "잠실3동", "잠실4동", "잠실6동", "잠실7동"],
+    "양천구": ["목1동", "목2동", "목3동", "목4동", "목5동", "신월1동", "신월2동", "신월3동", "신월4동", "신월5동", "신월6동", "신월7동", "신정1동", "신정2동", "신정3동", "신정4동", "신정6동", "신정7동"],
+    "영등포구": ["영등포본동", "영등포동", "여의동", "당산1동", "당산2동", "도림동", "문래동", "양평1동", "양평2동", "신길1동", "신길3동", "신길4동", "신길5동", "신길6동", "신길7동", "대림1동", "대림2동", "대림3동"],
+    "용산구": ["후암동", "용산2가동", "남영동", "청파동", "원효로1동", "원효로2동", "효창동", "용문동", "한강로동", "이촌1동", "이촌2동", "이태원1동", "이태원2동", "한남동", "서빙고동", "보광동"],
+    "은평구": ["녹번동", "불광1동", "불광2동", "갈현1동", "갈현2동", "구산동", "대조동", "응암1동", "응암2동", "응암3동", "역촌동", "신사1동", "신사2동", "증산동", "수색동", "진관동"],
+    "종로구": ["청운효자동", "사직동", "삼청동", "부암동", "평창동", "무악동", "교남동", "가회동", "종로1·2·3·4가동", "종로5·6가동", "이화동", "혜화동", "창신1동", "창신2동", "창신3동", "숭인1동", "숭인2동"],
+    "중구": ["소공동", "회현동", "명동", "필동", "장충동", "광희동", "을지로동", "신당동", "다산동", "약수동", "청구동", "신당5동", "동화동", "황학동", "중림동"],
+    "중랑구": ["면목본동", "면목2동", "면목3·8동", "면목4동", "면목5동", "면목7동", "상봉1동", "상봉2동", "중화1동", "중화2동", "묵1동", "묵2동", "망우본동", "망우3동", "신내1동", "신내2동"],
+}
+
+SEOUL_DONG_CENTERS = {
+    ("종로구", "청운효자동"): (37.5842, 126.9708),
+    ("종로구", "사직동"): (37.5758, 126.9689),
+    ("종로구", "삼청동"): (37.5850, 126.9818),
+    ("종로구", "가회동"): (37.5828, 126.9867),
+    ("종로구", "종로1·2·3·4가동"): (37.5703, 126.9830),
+    ("종로구", "종로5·6가동"): (37.5707, 127.0030),
+    ("종로구", "혜화동"): (37.5861, 127.0005),
+    ("중구", "소공동"): (37.5638, 126.9796),
+    ("중구", "회현동"): (37.5574, 126.9791),
+    ("중구", "명동"): (37.5636, 126.9869),
+    ("중구", "필동"): (37.5604, 126.9958),
+    ("중구", "을지로동"): (37.5664, 126.9914),
+    ("중구", "광희동"): (37.5644, 127.0051),
+    ("중구", "신당동"): (37.5654, 127.0168),
+    ("용산구", "한강로동"): (37.5299, 126.9706),
+    ("용산구", "이태원1동"): (37.5345, 126.9946),
+    ("용산구", "한남동"): (37.5345, 127.0036),
+    ("성동구", "성수1가1동"): (37.5421, 127.0431),
+    ("성동구", "성수2가1동"): (37.5397, 127.0555),
+    ("성동구", "왕십리도선동"): (37.5676, 127.0255),
+    ("광진구", "화양동"): (37.5452, 127.0717),
+    ("광진구", "자양1동"): (37.5347, 127.0828),
+    ("광진구", "광장동"): (37.5469, 127.1034),
+    ("동대문구", "청량리동"): (37.5877, 127.0473),
+    ("동대문구", "회기동"): (37.5908, 127.0553),
+    ("중랑구", "면목본동"): (37.5893, 127.0875),
+    ("중랑구", "상봉1동"): (37.5979, 127.0930),
+    ("성북구", "성북동"): (37.5926, 126.9989),
+    ("성북구", "안암동"): (37.5860, 127.0217),
+    ("성북구", "정릉1동"): (37.6034, 127.0135),
+    ("강북구", "수유3동"): (37.6380, 127.0255),
+    ("강북구", "미아동"): (37.6270, 127.0261),
+    ("도봉구", "창1동"): (37.6477, 127.0449),
+    ("도봉구", "도봉2동"): (37.6692, 127.0470),
+    ("노원구", "상계6·7동"): (37.6542, 127.0606),
+    ("노원구", "공릉1동"): (37.6248, 127.0738),
+    ("은평구", "녹번동"): (37.6028, 126.9292),
+    ("은평구", "진관동"): (37.6375, 126.9198),
+    ("서대문구", "신촌동"): (37.5654, 126.9390),
+    ("서대문구", "연희동"): (37.5736, 126.9352),
+    ("마포구", "서교동"): (37.5552, 126.9237),
+    ("마포구", "연남동"): (37.5623, 126.9217),
+    ("마포구", "상암동"): (37.5784, 126.8927),
+    ("양천구", "목1동"): (37.5307, 126.8755),
+    ("양천구", "신정1동"): (37.5186, 126.8545),
+    ("강서구", "가양1동"): (37.5696, 126.8449),
+    ("강서구", "공항동"): (37.5585, 126.8107),
+    ("강서구", "화곡1동"): (37.5441, 126.8416),
+    ("구로구", "신도림동"): (37.5088, 126.8807),
+    ("구로구", "구로3동"): (37.4854, 126.8955),
+    ("금천구", "가산동"): (37.4768, 126.8838),
+    ("금천구", "시흥1동"): (37.4568, 126.8954),
+    ("영등포구", "여의동"): (37.5236, 126.9246),
+    ("영등포구", "문래동"): (37.5165, 126.8899),
+    ("동작구", "노량진1동"): (37.5125, 126.9419),
+    ("동작구", "흑석동"): (37.5053, 126.9626),
+    ("관악구", "낙성대동"): (37.4761, 126.9580),
+    ("관악구", "신림동"): (37.4874, 126.9298),
+    ("서초구", "서초2동"): (37.4921, 127.0246),
+    ("서초구", "반포4동"): (37.4995, 127.0005),
+    ("서초구", "양재1동"): (37.4837, 127.0365),
+    ("강남구", "신사동"): (37.5224, 127.0287),
+    ("강남구", "압구정동"): (37.5271, 127.0307),
+    ("강남구", "청담동"): (37.5251, 127.0493),
+    ("강남구", "삼성1동"): (37.5146, 127.0625),
+    ("강남구", "대치1동"): (37.4931, 127.0560),
+    ("강남구", "역삼1동"): (37.5007, 127.0365),
+    ("송파구", "잠실6동"): (37.5145, 127.1003),
+    ("송파구", "석촌동"): (37.5036, 127.1036),
+    ("송파구", "가락본동"): (37.4957, 127.1200),
+    ("송파구", "문정2동"): (37.4860, 127.1225),
+    ("강동구", "천호2동"): (37.5435, 127.1259),
+    ("강동구", "길동"): (37.5391, 127.1466),
+    ("강동구", "상일1동"): (37.5512, 127.1693),
+}
+
 
 DEMO_PLACES = [
     {
@@ -66,7 +179,7 @@ DEMO_PLACES = [
         "likes": 12,
         "liked_by": [],
         "created_at": "2026-04-15",
-        "comments": [],
+        "feeds": [],
         "supplements": ["가을에 은행잎이 예뻐요. 사진 찍기도 좋습니다!"],
     },
     {
@@ -82,7 +195,7 @@ DEMO_PLACES = [
         "likes": 24,
         "liked_by": [],
         "created_at": "2026-03-20",
-        "comments": [],
+        "feeds": [],
         "supplements": [],
     },
     {
@@ -98,7 +211,7 @@ DEMO_PLACES = [
         "likes": 8,
         "liked_by": [],
         "created_at": "2026-04-02",
-        "comments": [],
+        "feeds": [],
         "supplements": [],
     },
     {
@@ -114,7 +227,7 @@ DEMO_PLACES = [
         "likes": 31,
         "liked_by": [],
         "created_at": "2026-02-10",
-        "comments": [],
+        "feeds": [],
         "supplements": [],
     },
     {
@@ -130,7 +243,7 @@ DEMO_PLACES = [
         "likes": 19,
         "liked_by": [],
         "created_at": "2026-01-25",
-        "comments": [],
+        "feeds": [],
         "supplements": [],
     },
     {
@@ -146,7 +259,7 @@ DEMO_PLACES = [
         "likes": 15,
         "liked_by": [],
         "created_at": "2026-03-05",
-        "comments": [],
+        "feeds": [],
         "supplements": [],
     },
     {
@@ -162,7 +275,7 @@ DEMO_PLACES = [
         "likes": 42,
         "liked_by": [],
         "created_at": "2026-04-01",
-        "comments": [],
+        "feeds": [],
         "supplements": [],
     },
     {
@@ -178,7 +291,7 @@ DEMO_PLACES = [
         "likes": 9,
         "liked_by": [],
         "created_at": "2026-05-03",
-        "comments": [],
+        "feeds": [],
         "supplements": [],
     },
 ]
@@ -207,7 +320,10 @@ def init_state() -> None:
         st.session_state.places = deepcopy(DEMO_PLACES)
     for place in st.session_state.places:
         place.setdefault("liked_by", [])
-        place.setdefault("comments", [])
+        place.setdefault("feeds", place.pop("comments", []))
+        district, admin_dong = infer_admin_area(place["lat"], place["lng"])
+        place.setdefault("district", district)
+        place.setdefault("admin_dong", admin_dong)
     if "selected_place_id" not in st.session_state:
         st.session_state.selected_place_id = None
     if "picked_location" not in st.session_state:
@@ -221,6 +337,14 @@ def current_account() -> str:
     return account_name or "동네 주민"
 
 
+def feed_columns(photo_count: int) -> int:
+    if photo_count == 1:
+        return 1
+    if photo_count <= 4:
+        return 2
+    return 3
+
+
 def label_options(source: dict[str, str] | dict[str, dict[str, str]]) -> dict[str, str]:
     labels = {}
     for key, value in source.items():
@@ -229,6 +353,42 @@ def label_options(source: dict[str, str] | dict[str, dict[str, str]]) -> dict[st
         else:
             labels[value] = key
     return labels
+
+
+def is_in_seoul(lat: float, lng: float) -> bool:
+    return (
+        SEOUL_BOUNDS["min_lat"] <= lat <= SEOUL_BOUNDS["max_lat"]
+        and SEOUL_BOUNDS["min_lng"] <= lng <= SEOUL_BOUNDS["max_lng"]
+    )
+
+
+def coordinate_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    lat_scale = 111.0
+    lng_scale = 111.0 * cos(radians((lat1 + lat2) / 2))
+    return sqrt(((lat1 - lat2) * lat_scale) ** 2 + ((lng1 - lng2) * lng_scale) ** 2)
+
+
+def infer_admin_area(lat: float, lng: float) -> tuple[str, str]:
+    if not is_in_seoul(lat, lng):
+        return "서울 외 지역", "서울 외 지역"
+
+    nearest_area = min(
+        SEOUL_DONG_CENTERS.items(),
+        key=lambda item: coordinate_distance(lat, lng, item[1][0], item[1][1]),
+    )[0]
+    return nearest_area
+
+
+def seoul_district_options() -> list[str]:
+    return ["전체"] + sorted(SEOUL_ADMIN_DONGS) + ["서울 외 지역"]
+
+
+def seoul_dong_options(district: str) -> list[str]:
+    if district == "전체":
+        return ["전체"]
+    if district == "서울 외 지역":
+        return ["전체", "서울 외 지역"]
+    return ["전체"] + SEOUL_ADMIN_DONGS[district]
 
 
 def matches_any(selected: list[str], values: list[str], include_all: bool = False) -> bool:
@@ -241,6 +401,8 @@ def matches_any(selected: list[str], values: list[str], include_all: bool = Fals
 
 def filter_places(
     places: list[dict],
+    selected_district: str,
+    selected_admin_dong: str,
     selected_types: list[str],
     selected_times: list[str],
     selected_seasons: list[str],
@@ -249,7 +411,9 @@ def filter_places(
     return [
         place
         for place in places
-        if matches_any(selected_types, [place["type"]])
+        if (selected_district == "전체" or place["district"] == selected_district)
+        and (selected_admin_dong == "전체" or place["admin_dong"] == selected_admin_dong)
+        and matches_any(selected_types, [place["type"]])
         and matches_any(selected_times, place["time_slot"])
         and matches_any(selected_seasons, place["season"], include_all=True)
         and matches_any(selected_tags, place["tags"])
@@ -276,9 +440,22 @@ def marker_html(place_type: str) -> str:
 
 
 def make_map(places: list[dict], picked_location: dict | None) -> folium.Map:
+    if places:
+        center = [
+            sum(place["lat"] for place in places) / len(places),
+            sum(place["lng"] for place in places) / len(places),
+        ]
+        zoom_start = 14 if len(places) > 1 else 16
+    elif picked_location:
+        center = [picked_location["lat"], picked_location["lng"]]
+        zoom_start = 16
+    else:
+        center = [37.567, 126.979]
+        zoom_start = 12
+
     dongne_map = folium.Map(
-        location=[37.567, 126.979],
-        zoom_start=15,
+        location=center,
+        zoom_start=zoom_start,
         tiles="CartoDB positron",
         control_scale=True,
     )
@@ -288,6 +465,7 @@ def make_map(places: list[dict], picked_location: dict | None) -> folium.Map:
         popup = folium.Popup(
             f"""
             <strong>{place["name"]}</strong><br>
+            {place["district"]} {place["admin_dong"]}<br>
             {meta["emoji"]} {meta["label"]}<br>
             ❤️ {place["likes"]}<br>
             {place["description"]}
@@ -320,7 +498,7 @@ def render_place_card(place: dict) -> None:
 
     with st.container(border=True):
         st.subheader(f"{meta['emoji']} {place['name']}")
-        st.caption(f"{meta['label']} · {time_text} · {season_text}")
+        st.caption(f"{place['district']} {place['admin_dong']} · {meta['label']} · {time_text} · {season_text}")
         st.write(place["description"])
         if place["tags"]:
             st.write(" ".join(f"`#{tag}`" for tag in place["tags"]))
@@ -343,36 +521,68 @@ def render_place_card(place: dict) -> None:
                 st.info(supplement)
 
         st.divider()
-        st.markdown(f"**댓글 {len(place['comments'])}개**")
-        if place["comments"]:
-            for comment in reversed(place["comments"]):
-                st.caption(f"{comment['author']} · {comment['created_at']}")
-                st.write(comment["content"])
+        st.markdown(f"**사진 피드 {len(place['feeds'])}개**")
+        if place["feeds"]:
+            for feed in reversed(place["feeds"]):
+                with st.container(border=True):
+                    st.caption(f"{feed['author']} · {feed['created_at']}")
+                    photos = feed.get("photos", [])
+                    if photos:
+                        columns = st.columns(feed_columns(len(photos)))
+                        for index, photo in enumerate(photos):
+                            with columns[index % len(columns)]:
+                                st.image(photo["data"], caption=photo["name"], use_container_width=True)
+                    st.write(feed.get("review", feed.get("content", "")))
         else:
-            st.caption("아직 댓글이 없습니다.")
+            st.caption("아직 사진 피드가 없습니다.")
 
-        with st.form(f"comment-form-{place['id']}", clear_on_submit=True):
-            comment = st.text_area(
-                "댓글 작성",
-                placeholder="이 장소에 대한 경험이나 팁을 남겨주세요.",
-                height=80,
-                key=f"comment-text-{place['id']}",
+        with st.form(f"feed-form-{place['id']}", clear_on_submit=True):
+            photos = st.file_uploader(
+                "사진 업로드",
+                type=["jpg", "jpeg", "png", "webp"],
+                accept_multiple_files=True,
+                key=f"feed-photos-{place['id']}",
             )
-            submitted = st.form_submit_button("댓글 등록")
+            review = st.text_area(
+                "한줄평",
+                placeholder="이 장소에서 찍은 사진과 함께 남길 한줄평을 적어주세요.",
+                height=100,
+                max_chars=500,
+                key=f"feed-review-{place['id']}",
+            )
+            st.caption(f"{len(review)} / 500자 · 사진은 피드당 최대 10장")
+            submitted = st.form_submit_button("피드 등록")
 
         if submitted:
-            if not comment.strip():
-                st.error("댓글 내용을 입력해 주세요.")
+            if not photos:
+                st.error("사진을 1장 이상 업로드해 주세요.")
                 return
-            place["comments"].append(
+            if len(photos) > 10:
+                st.error("사진은 한 피드당 최대 10장까지 업로드할 수 있습니다.")
+                return
+            if not review.strip():
+                st.error("한줄평을 입력해 주세요.")
+                return
+            if len(review.strip()) > 500:
+                st.error("한줄평은 500자 이하로 작성해 주세요.")
+                return
+            place["feeds"].append(
                 {
                     "id": str(uuid4()),
                     "author": account_name,
-                    "content": comment.strip(),
+                    "review": review.strip(),
+                    "photos": [
+                        {
+                            "name": photo.name,
+                            "type": photo.type,
+                            "data": photo.getvalue(),
+                        }
+                        for photo in photos
+                    ],
                     "created_at": date.today().isoformat(),
                 }
             )
-            st.success("댓글이 등록되었습니다.")
+            st.success("사진 피드가 등록되었습니다.")
             st.rerun()
 
 
@@ -397,8 +607,11 @@ def render_add_place_form() -> None:
 
     picked = st.session_state.picked_location
     if picked:
+        suggested_district, suggested_dong = infer_admin_area(picked["lat"], picked["lng"])
         st.success(f"선택된 위치: {picked['lat']:.5f}, {picked['lng']:.5f}")
+        st.caption(f"자동 분류: {suggested_district} {suggested_dong}")
     else:
+        suggested_district, suggested_dong = "종로구", "종로1·2·3·4가동"
         st.warning("먼저 지도에서 등록할 위치를 클릭해 주세요.")
 
     type_labels = label_options(PLACE_TYPES)
@@ -407,6 +620,12 @@ def render_add_place_form() -> None:
 
     with st.form("add-place-form", clear_on_submit=True):
         name = st.text_input("장소 이름", placeholder="예: 동네 느티나무 벤치")
+        district_values = sorted(SEOUL_ADMIN_DONGS) + ["서울 외 지역"]
+        district_index = district_values.index(suggested_district) if suggested_district in district_values else 0
+        district = st.selectbox("자치구", district_values, index=district_index)
+        dong_values = SEOUL_ADMIN_DONGS.get(district, ["서울 외 지역"])
+        dong_index = dong_values.index(suggested_dong) if suggested_dong in dong_values else 0
+        admin_dong = st.selectbox("행정동", dong_values, index=dong_index)
         place_type_label = st.selectbox("장소 유형", list(type_labels.keys()))
         time_label_values = st.multiselect("이용 시간대", list(time_labels.keys()))
         season_label_values = st.multiselect("추천 계절", list(season_labels.keys()))
@@ -429,6 +648,8 @@ def render_add_place_form() -> None:
                 "lat": picked["lat"],
                 "lng": picked["lng"],
                 "name": name.strip(),
+                "district": district,
+                "admin_dong": admin_dong,
                 "type": type_labels[place_type_label],
                 "time_slot": [time_labels[label] for label in time_label_values],
                 "season": [season_labels[label] for label in season_label_values],
@@ -437,7 +658,7 @@ def render_add_place_form() -> None:
                 "likes": 0,
                 "liked_by": [],
                 "created_at": date.today().isoformat(),
-                "comments": [],
+                "feeds": [],
                 "supplements": [],
             }
         )
@@ -450,12 +671,12 @@ def main() -> None:
     init_state()
 
     st.title("🗺️ 동네 사용설명서")
-    st.caption("지도에는 없지만, 주민은 알고 있는 장소들")
+    st.caption("서울의 장소를 행정동 단위로 나눠 보고, 주민이 아는 작은 정보를 더합니다.")
 
     with st.sidebar:
         st.header("내 계정")
         st.text_input("계정 이름", key="account_name")
-        st.caption(f"{current_account()} 계정으로 공감과 댓글을 남깁니다.")
+        st.caption(f"{current_account()} 계정으로 공감과 사진 피드를 남깁니다.")
 
         st.divider()
         st.header("필터")
@@ -463,6 +684,8 @@ def main() -> None:
         time_labels = label_options(TIME_LABELS)
         season_labels = label_options(SEASON_LABELS)
 
+        selected_district = st.selectbox("자치구", seoul_district_options())
+        selected_admin_dong = st.selectbox("행정동", seoul_dong_options(selected_district))
         selected_type_labels = st.multiselect("장소 유형", list(type_labels.keys()))
         selected_time_labels = st.multiselect("시간대", list(time_labels.keys()))
         selected_season_labels = st.multiselect("계절", list(season_labels.keys()))
@@ -477,6 +700,8 @@ def main() -> None:
 
     filtered_places = filter_places(
         st.session_state.places,
+        selected_district,
+        selected_admin_dong,
         selected_types,
         selected_times,
         selected_seasons,
@@ -486,7 +711,8 @@ def main() -> None:
     map_col, info_col = st.columns([1.55, 1], gap="large")
 
     with map_col:
-        st.markdown(f"**표시 중인 장소 {len(filtered_places)}곳**")
+        area_label = selected_district if selected_admin_dong == "전체" else f"{selected_district} {selected_admin_dong}"
+        st.markdown(f"**{area_label} 표시 중인 장소 {len(filtered_places)}곳**")
         map_state = st_folium(
             make_map(filtered_places, st.session_state.picked_location),
             height=680,
@@ -495,10 +721,13 @@ def main() -> None:
         )
         if map_state.get("last_clicked"):
             clicked = map_state["last_clicked"]
-            st.session_state.picked_location = {
+            picked_location = {
                 "lat": clicked["lat"],
                 "lng": clicked["lng"],
             }
+            if picked_location != st.session_state.picked_location:
+                st.session_state.picked_location = picked_location
+                st.rerun()
 
     with info_col:
         tab_places, tab_courses, tab_about = st.tabs(["장소", "코스", "소개"])
@@ -515,7 +744,7 @@ def main() -> None:
             st.subheader("PGIS 기반 주민 참여형 지도")
             st.write(
                 "동네 사용설명서는 주민들이 직접 발견한 쉬는 곳, 걷기 좋은 길, "
-                "기다리기 좋은 장소, 생활 편의 정보를 모아 보는 작은 지도입니다."
+                "기다리기 좋은 장소, 생활 편의 정보를 서울 행정동 단위로 모아 보는 작은 지도입니다."
             )
             st.write("Railway에서는 이 파일을 `streamlit run app.py`로 실행하면 됩니다.")
 
