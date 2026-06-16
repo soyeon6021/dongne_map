@@ -3,9 +3,11 @@ from __future__ import annotations
 from copy import deepcopy
 from datetime import date
 from math import cos, radians, sqrt
+import os
 from uuid import uuid4
 
 import folium
+import requests
 import streamlit as st
 from streamlit_folium import st_folium
 
@@ -58,6 +60,8 @@ SEOUL_BOUNDS = {
     "min_lng": 126.734,
     "max_lng": 127.270,
 }
+
+SEOUL_VIEWBOX = "126.734,37.715,127.270,37.413"
 
 SEOUL_ADMIN_DONGS = {
     "강남구": ["신사동", "논현1동", "논현2동", "압구정동", "청담동", "삼성1동", "삼성2동", "대치1동", "대치2동", "대치4동", "역삼1동", "역삼2동", "도곡1동", "도곡2동", "개포1동", "개포2동", "개포3동", "개포4동", "세곡동", "일원본동", "일원1동", "수서동"],
@@ -330,6 +334,12 @@ def init_state() -> None:
         st.session_state.picked_location = None
     if "account_name" not in st.session_state:
         st.session_state.account_name = "동네 주민"
+    if "place_search_results" not in st.session_state:
+        st.session_state.place_search_results = []
+    if "selected_place_name" not in st.session_state:
+        st.session_state.selected_place_name = ""
+    if "selected_place_address" not in st.session_state:
+        st.session_state.selected_place_address = ""
 
 
 def current_account() -> str:
@@ -389,6 +399,109 @@ def seoul_dong_options(district: str) -> list[str]:
     if district == "서울 외 지역":
         return ["전체", "서울 외 지역"]
     return ["전체"] + SEOUL_ADMIN_DONGS[district]
+
+
+def kakao_rest_api_key() -> str:
+    try:
+        secret_key = st.secrets.get("KAKAO_REST_API_KEY", "")
+    except Exception:
+        secret_key = ""
+    return secret_key or os.environ.get("KAKAO_REST_API_KEY", "")
+
+
+def candidate_label(candidate: dict) -> str:
+    address = candidate.get("address") or "주소 정보 없음"
+    source = candidate.get("source", "")
+    return f"{candidate['name']} · {address} · {source}"
+
+
+@st.cache_data(ttl=60 * 60, show_spinner=False)
+def search_place_candidates(query: str) -> list[dict]:
+    keyword = query.strip()
+    if not keyword:
+        return []
+
+    kakao_key = kakao_rest_api_key()
+    if kakao_key:
+        try:
+            response = requests.get(
+                "https://dapi.kakao.com/v2/local/search/keyword.json",
+                headers={"Authorization": f"KakaoAK {kakao_key}"},
+                params={
+                    "query": keyword,
+                    "x": 126.9780,
+                    "y": 37.5665,
+                    "radius": 20000,
+                    "size": 10,
+                    "sort": "accuracy",
+                },
+                timeout=5,
+            )
+            response.raise_for_status()
+            documents = response.json().get("documents", [])
+            candidates = []
+            for document in documents:
+                lat = float(document["y"])
+                lng = float(document["x"])
+                district, admin_dong = infer_admin_area(lat, lng)
+                candidates.append(
+                    {
+                        "name": document.get("place_name") or keyword,
+                        "address": document.get("road_address_name") or document.get("address_name", ""),
+                        "lat": lat,
+                        "lng": lng,
+                        "district": district,
+                        "admin_dong": admin_dong,
+                        "source": "Kakao",
+                    }
+                )
+            if candidates:
+                return candidates
+        except requests.RequestException:
+            pass
+
+    try:
+        response = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            headers={"User-Agent": "dongne-map/1.0"},
+            params={
+                "q": f"{keyword}, 서울, 대한민국",
+                "format": "json",
+                "limit": 10,
+                "addressdetails": 1,
+                "countrycodes": "kr",
+                "viewbox": SEOUL_VIEWBOX,
+                "bounded": 0,
+            },
+            timeout=7,
+        )
+        response.raise_for_status()
+    except requests.RequestException:
+        return []
+
+    candidates = []
+    seen_locations = set()
+    for item in response.json():
+        lat = float(item["lat"])
+        lng = float(item["lon"])
+        rounded_location = (round(lat, 5), round(lng, 5))
+        if rounded_location in seen_locations:
+            continue
+        seen_locations.add(rounded_location)
+        district, admin_dong = infer_admin_area(lat, lng)
+        display_name = item.get("display_name", "")
+        candidates.append(
+            {
+                "name": item.get("name") or keyword,
+                "address": display_name,
+                "lat": lat,
+                "lng": lng,
+                "district": district,
+                "admin_dong": admin_dong,
+                "source": "OpenStreetMap",
+            }
+        )
+    return candidates
 
 
 def matches_any(selected: list[str], values: list[str], include_all: bool = False) -> bool:
@@ -603,23 +716,69 @@ def render_courses(places: list[dict]) -> None:
 
 def render_add_place_form() -> None:
     st.subheader("장소 등록")
-    st.caption("지도에서 위치를 클릭하면 좌표가 자동으로 들어옵니다.")
+    st.caption("장소명을 검색해 후보를 고르거나 지도에서 위치를 클릭하면 좌표가 자동으로 들어옵니다.")
+
+    search_query = st.text_input(
+        "장소명 검색",
+        placeholder="예: 서울시청, 광화문광장, 망원시장",
+        key="place_search_query",
+    )
+    search_left, search_right = st.columns([1, 1])
+    with search_left:
+        if st.button("검색하기", use_container_width=True):
+            if not search_query.strip():
+                st.warning("검색할 장소명을 입력해 주세요.")
+            else:
+                with st.spinner("장소 후보를 찾는 중입니다."):
+                    st.session_state.place_search_results = search_place_candidates(search_query)
+                if not st.session_state.place_search_results:
+                    st.error("검색 결과가 없습니다. 장소명을 조금 더 구체적으로 입력해 주세요.")
+    with search_right:
+        if st.button("선택 초기화", use_container_width=True):
+            st.session_state.picked_location = None
+            st.session_state.selected_place_name = ""
+            st.session_state.selected_place_address = ""
+            st.session_state.place_search_results = []
+            st.rerun()
+
+    if st.session_state.place_search_results:
+        labels = [candidate_label(candidate) for candidate in st.session_state.place_search_results]
+        selected_label = st.selectbox("연관 장소 후보", labels)
+        selected_candidate = st.session_state.place_search_results[labels.index(selected_label)]
+        st.caption(
+            f"{selected_candidate['district']} {selected_candidate['admin_dong']} · "
+            f"{selected_candidate['lat']:.5f}, {selected_candidate['lng']:.5f}"
+        )
+        if st.button("이 장소로 좌표 지정", type="primary", use_container_width=True):
+            st.session_state.picked_location = {
+                "lat": selected_candidate["lat"],
+                "lng": selected_candidate["lng"],
+            }
+            st.session_state.selected_place_name = selected_candidate["name"]
+            st.session_state.selected_place_address = selected_candidate["address"]
+            st.rerun()
 
     picked = st.session_state.picked_location
     if picked:
         suggested_district, suggested_dong = infer_admin_area(picked["lat"], picked["lng"])
         st.success(f"선택된 위치: {picked['lat']:.5f}, {picked['lng']:.5f}")
         st.caption(f"자동 분류: {suggested_district} {suggested_dong}")
+        if st.session_state.selected_place_address:
+            st.caption(f"선택한 주소: {st.session_state.selected_place_address}")
     else:
         suggested_district, suggested_dong = "종로구", "종로1·2·3·4가동"
-        st.warning("먼저 지도에서 등록할 위치를 클릭해 주세요.")
+        st.warning("먼저 장소를 검색해 좌표를 지정하거나 지도에서 등록할 위치를 클릭해 주세요.")
 
     type_labels = label_options(PLACE_TYPES)
     time_labels = label_options(TIME_LABELS)
     season_labels = label_options(SEASON_LABELS)
 
     with st.form("add-place-form", clear_on_submit=True):
-        name = st.text_input("장소 이름", placeholder="예: 동네 느티나무 벤치")
+        name = st.text_input(
+            "장소 이름",
+            value=st.session_state.selected_place_name,
+            placeholder="예: 동네 느티나무 벤치",
+        )
         district_values = sorted(SEOUL_ADMIN_DONGS) + ["서울 외 지역"]
         district_index = district_values.index(suggested_district) if suggested_district in district_values else 0
         district = st.selectbox("자치구", district_values, index=district_index)
@@ -663,6 +822,9 @@ def render_add_place_form() -> None:
             }
         )
         st.session_state.picked_location = None
+        st.session_state.selected_place_name = ""
+        st.session_state.selected_place_address = ""
+        st.session_state.place_search_results = []
         st.success("장소가 등록되었습니다.")
         st.rerun()
 
@@ -727,6 +889,7 @@ def main() -> None:
             }
             if picked_location != st.session_state.picked_location:
                 st.session_state.picked_location = picked_location
+                st.session_state.selected_place_address = ""
                 st.rerun()
 
     with info_col:
