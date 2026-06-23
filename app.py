@@ -30,6 +30,12 @@ PLACE_TYPES = [
     "역사·문화 산책길",
     "비 오는 날 피하기 좋은 곳",
     "밤에도 걷기 괜찮은 길",
+    "동네 밥집",
+    "간단히 먹기 좋은 곳",
+    "혼밥하기 좋은 곳",
+    "포장하기 좋은 곳",
+    "오래 머물기 좋은 카페",
+    "시장 먹거리",
 ]
 TIME_PERIODS = ["아침", "점심", "저녁", "밤"]
 SEASONS = ["봄", "여름", "가을", "겨울", "사계절"]
@@ -45,6 +51,15 @@ TAGS = [
     "비 피하기 좋음",
     "찾기 쉬움",
     "사람 덜 붐빔",
+    "혼밥하기 좋음",
+    "점심에 좋음",
+    "저녁에 좋음",
+    "간단히 먹기 좋음",
+    "포장하기 좋음",
+    "비 오는 날 가기 좋음",
+    "시장 먹거리",
+    "오래 머물기 좋음",
+    "길 걷다가 들르기 좋음",
 ]
 COURSE_THEMES = [
     "조용한 산책 코스",
@@ -53,6 +68,8 @@ COURSE_THEMES = [
     "약속 전 기다림 코스",
     "밤에도 걷기 괜찮은 코스",
     "역사문화 산책 코스",
+    "점심 산책 코스",
+    "혼자 보내는 코스",
 ]
 
 MAP_VIEWS = {
@@ -62,15 +79,39 @@ MAP_VIEWS = {
 }
 
 TYPE_STYLES = {
-    "쉬기 좋은 곳": {"color": "green", "icon": "tree", "tone": "#eaf7ed"},
-    "걷기 좋은 길": {"color": "blue", "icon": "road", "tone": "#eaf2ff"},
-    "기다리기 좋은 곳": {"color": "orange", "icon": "clock", "tone": "#fff4df"},
-    "만남 장소": {"color": "purple", "icon": "star", "tone": "#f2ebff"},
-    "계절별 추천 장소": {"color": "pink", "icon": "heart", "tone": "#fff0f5"},
-    "생활 편의 장소": {"color": "cadetblue", "icon": "info", "tone": "#e7f5f5"},
-    "역사·문화 산책길": {"color": "darkred", "icon": "landmark", "tone": "#fff0e9"},
-    "비 오는 날 피하기 좋은 곳": {"color": "darkblue", "icon": "cloud-rain", "tone": "#eaf3f8"},
-    "밤에도 걷기 괜찮은 길": {"color": "darkpurple", "icon": "moon", "tone": "#f0efff"},
+    "쉬기 좋은 곳": {"color": "lightblue", "icon": "pause", "tone": "#eef6ff", "symbol": "pause"},
+    "걷기 좋은 길": {"color": "blue", "icon": "road", "tone": "#edf5ff", "symbol": "route"},
+    "기다리기 좋은 곳": {"color": "cadetblue", "icon": "clock", "tone": "#f3f7fb", "symbol": "clock"},
+    "만남 장소": {"color": "purple", "icon": "star", "tone": "#f4f1ff", "symbol": "pin"},
+    "계절별 추천 장소": {"color": "green", "icon": "leaf", "tone": "#f1f8f2", "symbol": "leaf"},
+    "생활 편의 장소": {"color": "gray", "icon": "info", "tone": "#f5f6f8", "symbol": "info"},
+    "역사·문화 산책길": {"color": "darkred", "icon": "landmark", "tone": "#fff4ef", "symbol": "book"},
+    "비 오는 날 피하기 좋은 곳": {"color": "darkblue", "icon": "cloud-rain", "tone": "#eef6fb", "symbol": "rain"},
+    "밤에도 걷기 괜찮은 길": {"color": "darkpurple", "icon": "moon", "tone": "#f2f1fb", "symbol": "moon"},
+    "동네 밥집": {"color": "beige", "icon": "cutlery", "tone": "#fff7ed", "symbol": "meal"},
+    "간단히 먹기 좋은 곳": {"color": "orange", "icon": "bolt", "tone": "#fff7ed", "symbol": "quick"},
+    "혼밥하기 좋은 곳": {"color": "lightgray", "icon": "user", "tone": "#f6f7f9", "symbol": "solo"},
+    "포장하기 좋은 곳": {"color": "cadetblue", "icon": "shopping-bag", "tone": "#eef7f8", "symbol": "takeout"},
+    "오래 머물기 좋은 카페": {"color": "lightblue", "icon": "coffee", "tone": "#f1f7ff", "symbol": "cafe"},
+    "시장 먹거리": {"color": "red", "icon": "shopping-basket", "tone": "#fff1f0", "symbol": "market"},
+}
+
+SYMBOLS = {
+    "pause": "🪑",
+    "route": "🚶",
+    "clock": "⏳",
+    "pin": "🤝",
+    "leaf": "🌸",
+    "info": "🏪",
+    "book": "🏛️",
+    "rain": "☔",
+    "moon": "🌙",
+    "meal": "🍚",
+    "quick": "🥪",
+    "solo": "🍱",
+    "takeout": "🛍️",
+    "cafe": "☕",
+    "market": "🥟",
 }
 
 
@@ -79,114 +120,231 @@ def inject_style() -> None:
         """
         <style>
         :root {
-            --ink: #202124;
-            --muted: #686f76;
-            --line: #dde3e8;
-            --paper: #fbfcf8;
-            --soft-green: #eef7ee;
-            --soft-blue: #edf4fb;
-            --accent: #2f7d63;
+            --ink: #1d1d1f;
+            --muted: #6e6e73;
+            --faint: #a1a1a6;
+            --line: rgba(60, 60, 67, 0.14);
+            --panel: rgba(255, 255, 255, 0.76);
+            --panel-strong: rgba(255, 255, 255, 0.96);
+            --chrome: #f5f5f7;
+            --blue: #0066cc;
+            --blue-soft: rgba(0, 102, 204, 0.09);
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 28px rgba(0, 0, 0, 0.045);
         }
 
         .stApp {
-            background:
-                linear-gradient(180deg, #f8fbf6 0%, #f7f8f4 38%, #f4f7f8 100%);
+            background: #f5f5f7;
             color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+            font-size: 13px;
         }
 
         section[data-testid="stSidebar"] {
-            background: #f6f8f3;
+            background: rgba(238, 238, 242, 0.88);
+            backdrop-filter: blur(24px) saturate(1.2);
             border-right: 1px solid var(--line);
         }
 
-        .block-container {
-            padding-top: 2.1rem;
-            padding-bottom: 3rem;
-            max-width: 1320px;
+        section[data-testid="stSidebar"] * {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
         }
 
-        h1, h2, h3 {
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 2rem;
+            max-width: 1220px;
+        }
+
+        h1, h2, h3, p, div, span, label {
             letter-spacing: 0;
         }
 
-        div[data-testid="stMetric"] {
-            background: rgba(255, 255, 255, 0.72);
-            border: 1px solid var(--line);
+        h1, h2, h3 {
+            font-weight: 650;
+        }
+
+        h2 {
+            font-size: 1.05rem !important;
+            margin-top: 0.4rem !important;
+        }
+
+        h3 {
+            font-size: 0.94rem !important;
+        }
+
+        button[kind="primary"], div.stButton > button {
             border-radius: 8px;
-            padding: 14px 16px;
+            border: 1px solid rgba(60, 60, 67, 0.12);
+            box-shadow: none;
+            transition: all 0.16s ease;
+            min-height: 30px;
+            font-size: 0.78rem;
+        }
+
+        div.stButton > button:hover {
+            border-color: rgba(0, 122, 255, 0.35);
+            transform: translateY(-1px);
+        }
+
+        div[data-testid="stMetric"] {
+            background: var(--panel-strong);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 8px 10px;
+            box-shadow: none;
+        }
+
+        div[data-testid="stMetricValue"] {
+            color: #111827;
+            font-size: 1.02rem;
+            font-weight: 620;
+        }
+
+        div[data-testid="stMetricLabel"] {
+            font-size: 0.7rem;
+        }
+
+        div[data-testid="stSelectbox"] label,
+        div[data-testid="stMultiSelect"] label,
+        div[data-testid="stSlider"] label,
+        div[data-testid="stTextInput"] label,
+        div[data-testid="stNumberInput"] label,
+        div[data-testid="stRadio"] label {
+            font-size: 0.72rem;
+            color: var(--muted);
+        }
+
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="input"] > div {
+            border-radius: 8px;
+            border-color: rgba(0, 0, 0, 0.10);
+            background: rgba(255, 255, 255, 0.86);
+            min-height: 30px;
+            font-size: 0.78rem;
+        }
+
+        div[data-testid="stMarkdownContainer"] p,
+        div[data-testid="stCaptionContainer"] {
+            font-size: 0.78rem;
         }
 
         .hero {
-            border: 1px solid #d8e4dc;
-            background:
-                linear-gradient(120deg, rgba(239, 248, 235, 0.98), rgba(238, 245, 250, 0.98)),
-                radial-gradient(circle at 92% 14%, rgba(47, 125, 99, 0.10), transparent 30%);
-            border-radius: 8px;
-            padding: 28px 30px;
-            margin-bottom: 18px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.78);
+            backdrop-filter: blur(22px) saturate(1.1);
+            border-radius: 14px;
+            padding: 12px 14px 12px 58px;
+            margin-bottom: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            left: 14px;
+            top: 14px;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            border: 1px solid rgba(60, 60, 67, 0.12);
+            background: linear-gradient(180deg, #ffffff 0%, #f2f2f7 100%);
+            box-shadow: none;
+        }
+
+        .hero-symbol {
+            position: absolute;
+            left: 21px;
+            top: 19px;
+            z-index: 2;
+            color: var(--blue);
+            font-size: 1.05rem;
+            font-weight: 620;
         }
 
         .hero-kicker {
-            color: #2f7d63;
-            font-weight: 700;
-            font-size: 0.92rem;
-            margin-bottom: 8px;
+            color: var(--blue);
+            font-weight: 600;
+            font-size: 0.68rem;
+            margin-bottom: 2px;
         }
 
         .hero-title {
-            color: #202124;
-            font-size: 2.45rem;
-            font-weight: 800;
-            line-height: 1.14;
-            margin: 0 0 8px 0;
+            color: var(--ink);
+            font-size: 1.08rem;
+            font-weight: 650;
+            line-height: 1.22;
+            margin: 0 0 3px 0;
         }
 
         .hero-copy {
-            color: #4c555d;
-            font-size: 1.04rem;
-            line-height: 1.68;
-            max-width: 820px;
+            color: var(--muted);
+            font-size: 0.78rem;
+            line-height: 1.45;
+            max-width: 760px;
             margin: 0;
         }
 
         .folder-card {
+            position: relative;
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.82);
+            background: rgba(255, 255, 255, 0.80);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            padding: 10px;
+            min-height: 102px;
+            box-shadow: var(--shadow);
+        }
+
+        .folder-icon {
+            width: 24px;
+            height: 24px;
             border-radius: 8px;
-            padding: 16px 17px;
-            min-height: 138px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(180deg, #ffffff 0%, #f2f2f7 100%);
+            border: 1px solid var(--line);
+            color: #3a3a3c;
+            font-size: 0.86rem;
+            font-weight: 620;
+            margin-bottom: 7px;
         }
 
         .folder-title {
-            font-size: 1.05rem;
-            font-weight: 800;
-            margin: 0 0 8px 0;
+            font-size: 0.82rem;
+            font-weight: 620;
+            margin: 0 0 4px 0;
         }
 
         .folder-meta {
             color: var(--muted);
-            font-size: 0.9rem;
-            line-height: 1.5;
+            font-size: 0.68rem;
+            line-height: 1.36;
             margin: 0;
         }
 
         .folder-number {
-            font-size: 1.9rem;
-            font-weight: 800;
-            color: #2f7d63;
-            margin: 8px 0 2px 0;
+            font-size: 1.02rem;
+            font-weight: 620;
+            color: var(--ink);
+            margin: 3px 0;
         }
 
         .place-card {
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.86);
-            border-radius: 8px;
-            padding: 15px 16px 13px 16px;
-            margin-bottom: 10px;
+            background: var(--panel-strong);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 8px;
+            box-shadow: none;
         }
 
         .place-card:hover {
-            border-color: #b7cbc0;
+            border-color: rgba(0, 122, 255, 0.22);
             background: #ffffff;
         }
 
@@ -198,90 +356,121 @@ def inject_style() -> None:
         }
 
         .place-title {
-            font-weight: 800;
-            font-size: 1.02rem;
+            font-weight: 650;
+            font-size: 0.82rem;
             margin: 0;
         }
 
         .place-district {
-            color: #2f7d63;
-            font-size: 0.82rem;
-            font-weight: 700;
+            color: var(--blue);
+            font-size: 0.66rem;
+            font-weight: 600;
             white-space: nowrap;
         }
 
         .place-meta {
             color: var(--muted);
-            font-size: 0.86rem;
-            margin: 7px 0 9px 0;
+            font-size: 0.68rem;
+            margin: 4px 0 6px 0;
             line-height: 1.45;
         }
 
         .place-desc {
-            color: #30363b;
-            font-size: 0.95rem;
-            line-height: 1.55;
-            margin: 0 0 10px 0;
+            color: #374151;
+            font-size: 0.74rem;
+            line-height: 1.42;
+            margin: 0 0 7px 0;
         }
 
         .tag {
             display: inline-block;
-            border: 1px solid #d7e3dc;
-            background: #f6faf6;
+            border: 1px solid rgba(0, 122, 255, 0.10);
+            background: rgba(0, 122, 255, 0.055);
             border-radius: 999px;
-            padding: 3px 8px;
-            margin: 0 4px 5px 0;
-            color: #37584d;
-            font-size: 0.78rem;
+            padding: 2px 6px;
+            margin: 0 2px 3px 0;
+            color: #1f5f99;
+            font-size: 0.64rem;
         }
 
         .type-chip {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
             border-radius: 999px;
-            padding: 4px 9px;
-            font-weight: 700;
-            font-size: 0.78rem;
+            padding: 3px 7px;
+            font-weight: 600;
+            font-size: 0.65rem;
             color: #25302c;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
         }
 
         .section-note {
             color: var(--muted);
-            font-size: 0.92rem;
-            line-height: 1.55;
-            margin-top: -6px;
-            margin-bottom: 14px;
+            font-size: 0.72rem;
+            line-height: 1.5;
+            margin-top: -4px;
+            margin-bottom: 8px;
         }
 
         .course-box {
-            border: 1px solid #d4e1d8;
-            background: rgba(255, 255, 255, 0.84);
-            border-radius: 8px;
-            padding: 18px 18px 16px 18px;
-            margin-bottom: 14px;
+            border: 1px solid var(--line);
+            background: var(--panel-strong);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 8px;
+            box-shadow: none;
         }
 
         .course-title {
-            font-size: 1.22rem;
-            font-weight: 800;
-            margin: 0 0 8px 0;
+            font-size: 0.86rem;
+            font-weight: 620;
+            margin: 0 0 5px 0;
         }
 
         .course-desc {
             color: #3d464d;
-            line-height: 1.62;
-            margin: 0 0 12px 0;
+            font-size: 0.72rem;
+            line-height: 1.42;
+            margin: 0 0 8px 0;
         }
 
         .course-step {
-            border-left: 3px solid #2f7d63;
-            padding: 7px 0 7px 12px;
-            margin-bottom: 6px;
-            background: rgba(246, 250, 246, 0.72);
+            border: 1px solid rgba(0, 122, 255, 0.09);
+            border-radius: 9px;
+            padding: 7px 8px;
+            margin-bottom: 5px;
+            background: rgba(247, 250, 255, 0.80);
+            font-size: 0.72rem;
         }
 
         .course-step b {
-            color: #2f7d63;
+            color: var(--blue);
+        }
+
+        .soft-icon {
+            width: 18px;
+            height: 18px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 122, 255, 0.10);
+            color: var(--blue);
+            font-size: 0.78rem;
+            font-weight: 620;
+        }
+
+        iframe {
+            border-radius: 12px !important;
+            border: 1px solid var(--line) !important;
+            box-shadow: var(--shadow);
+        }
+
+        div[data-testid="stDataFrame"] {
+            border-radius: 16px;
+            overflow: hidden;
         }
         </style>
         """,
@@ -448,6 +637,58 @@ def base_place_folders() -> dict[str, list[dict]]:
                 "description": "관광 동선에서 살짝 벗어나 오래된 골목 분위기를 조용히 읽으며 걷기 좋음",
                 "likes": 19,
             },
+            {
+                "id": "jongno-food-001",
+                "district": "종로구",
+                "place_name": "안국역 골목 동네 밥집",
+                "latitude": 37.5769,
+                "longitude": 126.9851,
+                "place_type": "동네 밥집",
+                "time_period": ["점심", "저녁"],
+                "season": ["사계절"],
+                "tags": ["점심에 좋음", "혼밥하기 좋음", "길 걷다가 들르기 좋음"],
+                "description": "안국역 주변에서 점심시간에 빠르게 한 끼 해결하기 좋은 생활 식사 장소",
+                "likes": 18,
+            },
+            {
+                "id": "jongno-food-002",
+                "district": "종로구",
+                "place_name": "서촌 작은 포장 식사점",
+                "latitude": 37.5784,
+                "longitude": 126.9715,
+                "place_type": "포장하기 좋은 곳",
+                "time_period": ["점심", "저녁"],
+                "season": ["사계절"],
+                "tags": ["포장하기 좋음", "간단히 먹기 좋음", "점심에 좋음"],
+                "description": "서촌을 걷다가 오래 머물지 않고 포장해 이동하기 좋은 골목 식사점",
+                "likes": 13,
+            },
+            {
+                "id": "jongno-food-003",
+                "district": "종로구",
+                "place_name": "광장시장 간단 먹거리 골목",
+                "latitude": 37.5701,
+                "longitude": 126.9996,
+                "place_type": "시장 먹거리",
+                "time_period": ["점심", "저녁"],
+                "season": ["사계절"],
+                "tags": ["시장 먹거리", "간단히 먹기 좋음", "친구와 가기 좋음"],
+                "description": "시장 주변을 걷다가 짧게 들러 간단히 먹고 다시 이동하기 좋은 먹거리 구간",
+                "likes": 22,
+            },
+            {
+                "id": "jongno-food-004",
+                "district": "종로구",
+                "place_name": "대학로 조용한 머무름 카페",
+                "latitude": 37.5812,
+                "longitude": 127.0028,
+                "place_type": "오래 머물기 좋은 카페",
+                "time_period": ["점심", "저녁"],
+                "season": ["사계절"],
+                "tags": ["오래 머물기 좋음", "비 오는 날 가기 좋음", "혼자 가기 좋음"],
+                "description": "비 오는 날 공연 전후로 잠깐 쉬거나 혼자 시간을 보내기 좋은 카페",
+                "likes": 16,
+            },
         ],
         "중구": [
             {
@@ -593,6 +834,58 @@ def base_place_folders() -> dict[str, list[dict]]:
                 "description": "비 오는 날 지상 혼잡을 피해 잠깐 일행을 기다리고 이동 방향을 정하기 좋음",
                 "likes": 16,
             },
+            {
+                "id": "jung-food-001",
+                "district": "중구",
+                "place_name": "을지로 골목 혼밥 식사점",
+                "latitude": 37.5654,
+                "longitude": 126.9893,
+                "place_type": "혼밥하기 좋은 곳",
+                "time_period": ["점심", "저녁"],
+                "season": ["사계절"],
+                "tags": ["혼밥하기 좋음", "점심에 좋음", "간단히 먹기 좋음"],
+                "description": "을지로 산책이나 업무 이동 중 혼자 들어가기 부담 없는 식사 장소",
+                "likes": 19,
+            },
+            {
+                "id": "jung-food-002",
+                "district": "중구",
+                "place_name": "충무로 빠른 점심 밥집",
+                "latitude": 37.5618,
+                "longitude": 126.9932,
+                "place_type": "간단히 먹기 좋은 곳",
+                "time_period": ["점심"],
+                "season": ["사계절"],
+                "tags": ["점심에 좋음", "간단히 먹기 좋음", "길 걷다가 들르기 좋음"],
+                "description": "점심시간에 오래 앉지 않고 빠르게 한 끼 해결하기 좋은 생활 식사 지점",
+                "likes": 14,
+            },
+            {
+                "id": "jung-food-003",
+                "district": "중구",
+                "place_name": "남대문시장 간단 먹거리 줄",
+                "latitude": 37.5597,
+                "longitude": 126.9770,
+                "place_type": "시장 먹거리",
+                "time_period": ["점심", "저녁"],
+                "season": ["사계절"],
+                "tags": ["시장 먹거리", "간단히 먹기 좋음", "친구와 가기 좋음"],
+                "description": "시장 동선 중 짧게 멈춰 먹고 다시 걷기 좋은 생활 먹거리 구간",
+                "likes": 21,
+            },
+            {
+                "id": "jung-food-004",
+                "district": "중구",
+                "place_name": "시청 주변 오래 머무는 카페",
+                "latitude": 37.5655,
+                "longitude": 126.9785,
+                "place_type": "오래 머물기 좋은 카페",
+                "time_period": ["점심", "저녁"],
+                "season": ["사계절"],
+                "tags": ["오래 머물기 좋음", "비 오는 날 가기 좋음", "기다리기 좋음"],
+                "description": "비 오는 날 이동 전후로 앉아서 일정을 정리하거나 일행을 기다리기 좋은 카페",
+                "likes": 17,
+            },
         ],
     }
 
@@ -705,6 +998,11 @@ def type_tone(place_type: str) -> str:
     return TYPE_STYLES.get(place_type, {}).get("tone", "#f4f6f7")
 
 
+def type_symbol(place_type: str) -> str:
+    symbol_key = TYPE_STYLES.get(place_type, {}).get("symbol", "info")
+    return SYMBOLS.get(symbol_key, "i")
+
+
 def popup_html(row: pd.Series) -> str:
     return f"""
     <div style="width:260px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
@@ -771,7 +1069,9 @@ def score_place_for_theme(row: pd.Series, theme: str) -> int:
     elif theme == "비 오는 날 피하기 코스":
         score += 3 if place_type == "비 오는 날 피하기 좋은 곳" else 0
         score += 3 if "비 피하기 좋음" in tags else 0
+        score += 2 if "비 오는 날 가기 좋음" in tags else 0
         score += 1 if place_type == "기다리기 좋은 곳" else 0
+        score += 1 if place_type in {"동네 밥집", "오래 머물기 좋은 카페"} else 0
     elif theme == "약속 전 기다림 코스":
         score += 3 if place_type == "기다리기 좋은 곳" else 0
         score += 2 if place_type == "만남 장소" else 0
@@ -785,6 +1085,18 @@ def score_place_for_theme(row: pd.Series, theme: str) -> int:
         score += 3 if place_type == "역사·문화 산책길" else 0
         score += 1 if "사진 찍기 좋음" in tags else 0
         score += 2 if "산책하기 좋음" in tags else 0
+    elif theme == "점심 산책 코스":
+        score += 3 if place_type == "동네 밥집" else 0
+        score += 2 if place_type in {"걷기 좋은 길", "쉬기 좋은 곳", "간단히 먹기 좋은 곳"} else 0
+        score += 2 if "점심에 좋음" in tags else 0
+        score += 1 if "길 걷다가 들르기 좋음" in tags else 0
+        score += 1 if "산책하기 좋음" in tags else 0
+    elif theme == "혼자 보내는 코스":
+        score += 3 if place_type == "혼밥하기 좋은 곳" else 0
+        score += 2 if place_type in {"걷기 좋은 길", "쉬기 좋은 곳", "오래 머물기 좋은 카페"} else 0
+        score += 2 if tags.intersection({"혼밥하기 좋음", "혼자 가기 좋음"}) else 0
+        score += 1 if "조용함" in tags else 0
+        score += 1 if "오래 머물기 좋음" in tags else 0
 
     return score
 
@@ -896,9 +1208,9 @@ def draw_course_on_map(m: folium.Map, course_df: pd.DataFrame) -> folium.Map:
 
     folium.PolyLine(
         locations=coordinates,
-        color="#2f7d63",
+        color="#007aff",
         weight=5,
-        opacity=0.82,
+        opacity=0.86,
         popup=folium.Popup(popup_text, max_width=360),
     ).add_to(m)
 
@@ -911,8 +1223,8 @@ def draw_course_on_map(m: folium.Map, course_df: pd.DataFrame) -> folium.Map:
                 html=f"""
                 <div style="
                     width:30px;height:30px;border-radius:50%;
-                    background:#2f7d63;color:white;border:3px solid white;
-                    box-shadow:0 2px 8px rgba(0,0,0,.25);
+                    background:#007aff;color:white;border:3px solid white;
+                    box-shadow:0 8px 18px rgba(0,122,255,.28);
                     display:flex;align-items:center;justify-content:center;
                     font-weight:800;font-size:14px;">
                     {int(row.course_order)}
@@ -938,11 +1250,12 @@ def render_hero() -> None:
     st.markdown(
         """
         <div class="hero">
-            <div class="hero-kicker">PGIS 기반 주민 참여형 생활경험 지도</div>
+            <div class="hero-symbol">🗺️</div>
+            <div class="hero-kicker">주민 참여형 생활경험 지도</div>
             <div class="hero-title">동네 사용설명서</div>
             <p class="hero-copy">
                 지도에는 없지만 주민은 알고 있는 장소들. 종로구와 중구의 골목, 광장,
-                산책길, 기다림의 장소를 시간대와 계절, 상황 중심으로 기록합니다.
+                산책길, 기다림의 장소, 상황별 식사 장소를 시간대와 계절 중심으로 기록합니다.
             </p>
         </div>
         """,
@@ -951,40 +1264,52 @@ def render_hero() -> None:
 
 
 def render_sidebar() -> None:
-    st.sidebar.header("빠른 추천")
+    st.sidebar.header("Quick Views")
     st.sidebar.button(
-        "여름 그늘길 보기",
+        "🌳 여름 그늘길",
         use_container_width=True,
         on_click=apply_preset,
         kwargs={"types": ["걷기 좋은 길", "쉬기 좋은 곳", "계절별 추천 장소"], "season": "여름", "tags": ["그늘 있음"]},
     )
     st.sidebar.button(
-        "비 오는 날 피하기 좋은 곳 보기",
+        "☔ 비 오는 날",
         use_container_width=True,
         on_click=apply_preset,
         kwargs={"types": ["비 오는 날 피하기 좋은 곳"], "tags": ["비 피하기 좋음"]},
     )
     st.sidebar.button(
-        "약속 전 기다리기 좋은 곳 보기",
+        "⏳ 약속 전 기다림",
         use_container_width=True,
         on_click=apply_preset,
         kwargs={"types": ["기다리기 좋은 곳", "만남 장소"], "tags": ["기다리기 좋음", "찾기 쉬움"]},
     )
     st.sidebar.button(
-        "혼자 걷기 좋은 길 보기",
+        "🚶 혼자 걷기",
         use_container_width=True,
         on_click=apply_preset,
         kwargs={"types": ["걷기 좋은 길", "역사·문화 산책길"], "tags": ["혼자 가기 좋음", "산책하기 좋음"]},
     )
     st.sidebar.button(
-        "밤에도 걷기 괜찮은 길 보기",
+        "🌙 밤 산책",
         use_container_width=True,
         on_click=apply_preset,
         kwargs={"types": ["밤에도 걷기 괜찮은 길"], "time": "밤"},
     )
+    st.sidebar.button(
+        "🍚 점심 산책",
+        use_container_width=True,
+        on_click=apply_preset,
+        kwargs={"types": ["걷기 좋은 길", "동네 밥집", "간단히 먹기 좋은 곳", "쉬기 좋은 곳"], "time": "점심", "tags": ["점심에 좋음", "길 걷다가 들르기 좋음"]},
+    )
+    st.sidebar.button(
+        "🍱 혼자 보내기",
+        use_container_width=True,
+        on_click=apply_preset,
+        kwargs={"types": ["혼밥하기 좋은 곳", "오래 머물기 좋은 카페", "쉬기 좋은 곳"], "tags": ["혼밥하기 좋음", "혼자 가기 좋음", "오래 머물기 좋음"]},
+    )
 
     st.sidebar.divider()
-    st.sidebar.header("폴더 안 필터")
+    st.sidebar.header("Filters")
     st.sidebar.multiselect("장소 유형", PLACE_TYPES, key="filter_types")
     st.sidebar.selectbox("시간대", ["전체"] + TIME_PERIODS, key="filter_time")
     st.sidebar.selectbox("계절", ["전체"] + SEASONS, key="filter_season")
@@ -998,18 +1323,19 @@ def render_sidebar() -> None:
 def render_folder_cards() -> None:
     cols = st.columns(3)
     folder_specs = [
-        ("전체", "두 구를 한 번에 비교", all_places()),
-        ("종로구", "골목과 산책길 중심", st.session_state.place_folders["종로구"]),
-        ("중구", "도심 이동과 기다림 중심", st.session_state.place_folders["중구"]),
+        ("전체", "🗂️", "두 구를 한 번에 비교", all_places()),
+        ("종로구", "🚶", "골목과 산책길 중심", st.session_state.place_folders["종로구"]),
+        ("중구", "⏳", "도심 이동과 기다림 중심", st.session_state.place_folders["중구"]),
     ]
 
-    for col, (name, desc, places) in zip(cols, folder_specs):
+    for col, (name, icon, desc, places) in zip(cols, folder_specs):
         type_counter = Counter(place["place_type"] for place in places)
         tag_counter = Counter(tag for place in places for tag in place["tags"])
         with col:
             st.markdown(
                 f"""
                 <div class="folder-card">
+                    <div class="folder-icon">{icon}</div>
                     <div class="folder-title">{name} 폴더</div>
                     <p class="folder-meta">{desc}</p>
                     <div class="folder-number">{len(places)}곳</div>
@@ -1041,6 +1367,7 @@ def render_place_cards(filtered_df: pd.DataFrame) -> None:
     sorted_df = filtered_df.sort_values(["likes", "place_name"], ascending=[False, True])
     for _, row in sorted_df.iterrows():
         tags_html = "".join(f'<span class="tag">#{tag}</span>' for tag in row.tags)
+        symbol = type_symbol(row.place_type)
         st.markdown(
             f"""
             <div class="place-card">
@@ -1048,7 +1375,7 @@ def render_place_cards(filtered_df: pd.DataFrame) -> None:
                     <p class="place-title">{row.place_name}</p>
                     <span class="place-district">{row.district}</span>
                 </div>
-                <span class="type-chip" style="background:{type_tone(row.place_type)};">{row.place_type}</span>
+                <span class="type-chip" style="background:{type_tone(row.place_type)};"><span class="soft-icon">{symbol}</span>{row.place_type}</span>
                 <p class="place-meta">{as_text(row.time_period)} · {as_text(row.season)} · 공감 {row.likes}</p>
                 <p class="place-desc">{row.description}</p>
                 <div>{tags_html}</div>
@@ -1101,9 +1428,11 @@ def render_course_generator() -> None:
             distance_text = ""
             if row.get("distance_from_previous_km") and not pd.isna(row.get("distance_from_previous_km")):
                 distance_text = f" · 이전 장소에서 약 {row.distance_from_previous_km:.2f}km"
+            symbol = type_symbol(row.place_type)
             steps_html += (
                 f'<div class="course-step"><b>{int(row.course_order)}.</b> '
-                f'{row.place_name}<br><span class="place-meta">{row.place_type} · {as_text(row.tags)}{distance_text}</span></div>'
+                f'<span class="soft-icon">{symbol}</span> {row.place_name}'
+                f'<br><span class="place-meta">{row.place_type} · {as_text(row.tags)}{distance_text}</span></div>'
             )
 
         st.markdown(
@@ -1129,7 +1458,7 @@ def render_place_form() -> None:
 
     st.subheader("장소 등록")
     st.markdown(
-        '<p class="section-note">등록한 장소는 선택한 구의 장소 폴더에 임시 저장됩니다. 일반 리뷰보다 이 장소를 어떤 상황에서 어떻게 사용하는지 적어주세요.</p>',
+        '<p class="section-note">별점이나 평가보다 이 장소를 어떤 상황에서 어떻게 쓰는지 기록합니다. 음식점도 맛집 순위가 아니라 생활 동선 안의 식사 장소로 다룹니다.</p>',
         unsafe_allow_html=True,
     )
 
@@ -1144,13 +1473,17 @@ def render_place_form() -> None:
 
         col5, col6, col7 = st.columns(3)
         place_type = col5.selectbox("장소 유형", PLACE_TYPES)
-        time_period = col6.multiselect("추천 시간대", TIME_PERIODS, default=["점심"])
+        time_period = col6.multiselect("추천 시간대는 언제인가요?", TIME_PERIODS, default=["점심"])
         season = col7.multiselect("추천 계절", SEASONS, default=["사계절"])
 
-        tags = st.multiselect("태그", TAGS, default=["기다리기 좋음"])
+        tags = st.multiselect(
+            "혼자 가기 좋은가요, 친구와 가기 좋은가요? 간단히 먹기 좋은가요, 오래 머물기 좋은가요?",
+            TAGS,
+            default=["길 걷다가 들르기 좋음"],
+        )
         description = st.text_input(
-            "한 줄 설명",
-            placeholder="예: 을지로에서 약속 전 10분 정도 기다리기 좋음",
+            "이 장소는 어떤 상황에서 이용하기 좋은가요? 한 줄 사용법을 적어주세요.",
+            placeholder="예: 점심시간에 빠르게 한 끼 해결하기 좋은 곳",
         )
 
         submitted = st.form_submit_button("장소 폴더에 임시 등록")
