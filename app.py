@@ -10,6 +10,10 @@ import streamlit as st
 from streamlit_folium import st_folium
 
 
+APP_VERSION = "Railway Sync · 2026-06-23 · food-course-ui"
+RAILWAY_URL = "https://web-production-773b0.up.railway.app"
+
+
 st.set_page_config(
     page_title="동네 사용설명서",
     page_icon="🗺️",
@@ -285,6 +289,20 @@ def inject_style() -> None:
             line-height: 1.45;
             max-width: 760px;
             margin: 0;
+        }
+
+        .sync-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid rgba(0, 102, 204, 0.16);
+            background: rgba(0, 102, 204, 0.07);
+            color: var(--blue);
+            border-radius: 999px;
+            padding: 3px 8px;
+            margin-top: 8px;
+            font-size: 0.66rem;
+            font-weight: 600;
         }
 
         .folder-card {
@@ -1248,7 +1266,7 @@ def build_course_map(course_df: pd.DataFrame, district: str) -> folium.Map:
 
 def render_hero() -> None:
     st.markdown(
-        """
+        f"""
         <div class="hero">
             <div class="hero-symbol">🗺️</div>
             <div class="hero-kicker">주민 참여형 생활경험 지도</div>
@@ -1257,6 +1275,7 @@ def render_hero() -> None:
                 지도에는 없지만 주민은 알고 있는 장소들. 종로구와 중구의 골목, 광장,
                 산책길, 기다림의 장소, 상황별 식사 장소를 시간대와 계절 중심으로 기록합니다.
             </p>
+            <div class="sync-pill">● {APP_VERSION}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1264,6 +1283,9 @@ def render_hero() -> None:
 
 
 def render_sidebar() -> None:
+    st.sidebar.caption(f"배포 확인: {APP_VERSION}")
+    st.sidebar.caption(RAILWAY_URL)
+    st.sidebar.divider()
     st.sidebar.header("Quick Views")
     st.sidebar.button(
         "🌳 여름 그늘길",
