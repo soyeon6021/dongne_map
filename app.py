@@ -1021,10 +1021,61 @@ def type_symbol(place_type: str) -> str:
     return SYMBOLS.get(symbol_key, "i")
 
 
+def emoji_marker_html(symbol: str, label: str | int | None = None, active: bool = False) -> str:
+    label_html = ""
+    size = 42 if active else 38
+    font_size = 22 if active else 20
+    border_color = "#ffffff"
+    shadow = "0 10px 22px rgba(0, 122, 255, 0.30)" if active else "0 8px 18px rgba(0, 0, 0, 0.20)"
+
+    if label is not None:
+        label_html = f"""
+        <span style="
+            position:absolute;right:-8px;top:-8px;
+            min-width:18px;height:18px;padding:0 4px;
+            border-radius:999px;background:#007aff;color:white;
+            border:2px solid white;
+            display:flex;align-items:center;justify-content:center;
+            font-size:10px;font-weight:700;line-height:1;">
+            {label}
+        </span>
+        """
+
+    return f"""
+    <div style="position:relative;width:{size}px;height:{size + 8}px;">
+        <div style="
+            position:absolute;left:0;top:0;
+            width:{size}px;height:{size}px;border-radius:12px;
+            background:
+                linear-gradient(180deg,rgba(255,255,255,.92),rgba(242,242,247,.96)),
+                radial-gradient(circle at 30% 20%,rgba(255,255,255,.95),transparent 42%);
+            border:2px solid {border_color};
+            box-shadow:{shadow};
+            display:flex;align-items:center;justify-content:center;
+            font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
+            font-size:{font_size}px;line-height:1;
+            overflow:hidden;">
+            <span style="filter:saturate(1.08);">{symbol}</span>
+        </div>
+        <div style="
+            position:absolute;left:{size / 2 - 5}px;top:{size - 4}px;
+            width:10px;height:10px;
+            background:#ffffff;
+            border-right:2px solid {border_color};
+            border-bottom:2px solid {border_color};
+            transform:rotate(45deg);
+            box-shadow:3px 3px 8px rgba(0,0,0,.10);">
+        </div>
+        {label_html}
+    </div>
+    """
+
+
 def popup_html(row: pd.Series) -> str:
+    symbol = type_symbol(row.place_type)
     return f"""
     <div style="width:260px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-        <div style="font-size:12px; color:#2f7d63; font-weight:700;">{row.district} 폴더</div>
+        <div style="font-size:12px; color:#0066cc; font-weight:700;">{symbol} {row.district} 폴더</div>
         <h4 style="margin:3px 0 8px 0;">{row.place_name}</h4>
         <div style="margin-bottom:6px;"><b>유형</b>: {row.place_type}</div>
         <div><b>추천 시간대</b>: {as_text(row.time_period)}</div>
@@ -1041,12 +1092,17 @@ def build_map(filtered_df: pd.DataFrame, folder_name: str) -> folium.Map:
     m = folium.Map(location=view["center"], zoom_start=view["zoom"], tiles="CartoDB positron")
 
     for _, row in filtered_df.iterrows():
-        style = TYPE_STYLES.get(row.place_type, {"color": "gray", "icon": "info"})
+        symbol = type_symbol(row.place_type)
         folium.Marker(
             location=[row.latitude, row.longitude],
-            tooltip=f"{row.district} | {row.place_name}",
+            tooltip=f"{symbol} {row.district} | {row.place_name}",
             popup=folium.Popup(popup_html(row), max_width=320),
-            icon=folium.Icon(color=style["color"], icon=style["icon"], prefix="fa"),
+            icon=folium.DivIcon(
+                icon_size=(44, 52),
+                icon_anchor=(19, 48),
+                class_name="iphone-emoji-map-icon",
+                html=emoji_marker_html(symbol),
+            ),
         ).add_to(m)
 
     if not filtered_df.empty:
@@ -1233,21 +1289,16 @@ def draw_course_on_map(m: folium.Map, course_df: pd.DataFrame) -> folium.Map:
     ).add_to(m)
 
     for _, row in course_df.iterrows():
+        symbol = type_symbol(row.place_type)
         folium.Marker(
             location=[row.latitude, row.longitude],
-            tooltip=f"{int(row.course_order)}. {row.place_name}",
+            tooltip=f"{int(row.course_order)}. {symbol} {row.place_name}",
             popup=folium.Popup(popup_html(row), max_width=320),
             icon=folium.DivIcon(
-                html=f"""
-                <div style="
-                    width:30px;height:30px;border-radius:50%;
-                    background:#007aff;color:white;border:3px solid white;
-                    box-shadow:0 8px 18px rgba(0,122,255,.28);
-                    display:flex;align-items:center;justify-content:center;
-                    font-weight:800;font-size:14px;">
-                    {int(row.course_order)}
-                </div>
-                """
+                icon_size=(48, 56),
+                icon_anchor=(21, 52),
+                class_name="iphone-emoji-map-icon",
+                html=emoji_marker_html(symbol, label=int(row.course_order), active=True),
             ),
         ).add_to(m)
 
